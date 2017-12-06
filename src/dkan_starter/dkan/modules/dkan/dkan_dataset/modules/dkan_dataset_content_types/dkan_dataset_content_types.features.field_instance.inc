@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * dkan_dataset_content_types.features.field_instance.inc
@@ -468,6 +467,51 @@ function dkan_dataset_content_types_field_default_field_instances() {
       ),
       'type' => 'text_textfield',
       'weight' => 16,
+    ),
+  );
+
+  // Exported field_instance: 'node-dataset-field_elastic_schema'.
+  $field_instances['node-dataset-field_elastic_schema'] = array(
+    'bundle' => 'dataset',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'jsonb',
+        'settings' => array(),
+        'type' => 'jsonb_text',
+        'weight' => 27,
+      ),
+      'search_result' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_elastic_schema',
+    'label' => 'Elastic Schema',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'jsonb',
+      'settings' => array(
+        'ui_edit' => 'allow',
+      ),
+      'type' => 'jsonb_textarea',
+      'weight' => 33,
     ),
   );
 
@@ -1253,6 +1297,7 @@ uk-ogl|UK Open Government Licence (OGL)',
             'rectangle' => 'rectangle',
           ),
         ),
+        'geographic_areas' => FALSE,
         'map' => array(
           'auto_center' => 1,
           'base_url' => 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1694,9 +1739,9 @@ uk-ogl|UK Open Government Licence (OGL)',
           'filefield_sources' => array(
             'attach' => 0,
             'clipboard' => 0,
+            'dkan_remotefile' => 'dkan_remotefile',
             'reference' => 0,
             'remote' => 0,
-            'dkan_remotefile' => 'dkan_remotefile',
             'upload' => 0,
           ),
           'source_attach' => array(
@@ -1828,8 +1873,10 @@ uk-ogl|UK Open Government Licence (OGL)',
       ),
     ),
     'widget' => array(
-      'module' => 'og',
-      'settings' => array(),
+      'module' => 'options',
+      'settings' => array(
+        'apply_chosen' => '',
+      ),
       'type' => 'options_select',
       'weight' => 6,
     ),
@@ -1849,6 +1896,7 @@ uk-ogl|UK Open Government Licence (OGL)',
   t('Data Standard');
   t('Dataset');
   t('Description');
+  t('Elastic Schema');
   t('Format');
   t('Frequency');
   t('Granularity');
@@ -1865,7 +1913,7 @@ uk-ogl|UK Open Government Licence (OGL)',
   t('Link API');
   t('Link File');
   t('POD Theme');
-  t('Provides some sort of description that helps understanding the data. This usually consists of a table providing explanation of columns meaning, values interpretation and acronyms/codes used in the data. Can be a URL to such a resource. See Project Open Data <a href="http://project-open-data.github.io/schema/#common-core-required-if-applicable-fields">data dictionary</a> for more info.');
+  t('Provides some sort of description that helps understanding the data. This can be a URL to such a resource. See Project Open Data <a href="http://project-open-data.github.io/schema/#common-core-required-if-applicable-fields">data dictionary</a> for more info.');
   t('Public Access Level');
   t('Related Content');
   t('Resources');

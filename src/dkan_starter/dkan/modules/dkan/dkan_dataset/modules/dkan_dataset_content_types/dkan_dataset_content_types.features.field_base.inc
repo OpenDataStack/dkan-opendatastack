@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * dkan_dataset_content_types.features.field_base.inc
@@ -232,6 +231,21 @@ function dkan_dataset_content_types_field_default_field_bases() {
     'type' => 'entityreference',
   );
 
+  // Exported field_base: 'field_elastic_schema'.
+  $field_bases['field_elastic_schema'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_elastic_schema',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'jsonb',
+    'settings' => array(),
+    'translatable' => 0,
+    'type' => 'jsonb',
+  );
+
   // Exported field_base: 'field_format'.
   $field_bases['field_format'] = array(
     'active' => 1,
@@ -321,13 +335,13 @@ function dkan_dataset_content_types_field_default_field_bases() {
     'type' => 'text',
   );
 
-  // Exported field_base: 'field_harvest_source_modified'.
-  $field_bases['field_harvest_source_modified'] = array(
+  // Exported field_base: 'field_harvest_source_issued'.
+  $field_bases['field_harvest_source_issued'] = array(
     'active' => 1,
     'cardinality' => 1,
     'deleted' => 0,
     'entity_types' => array(),
-    'field_name' => 'field_harvest_source_modified',
+    'field_name' => 'field_harvest_source_issued',
     'indexes' => array(),
     'locked' => 0,
     'module' => 'date',
@@ -350,13 +364,13 @@ function dkan_dataset_content_types_field_default_field_bases() {
     'type' => 'datetime',
   );
 
-  // Exported field_base: 'field_harvest_source_issued'.
-  $field_bases['field_harvest_source_issued'] = array(
+  // Exported field_base: 'field_harvest_source_modified'.
+  $field_bases['field_harvest_source_modified'] = array(
     'active' => 1,
     'cardinality' => 1,
     'deleted' => 0,
     'entity_types' => array(),
-    'field_name' => 'field_harvest_source_issued',
+    'field_name' => 'field_harvest_source_modified',
     'indexes' => array(),
     'locked' => 0,
     'module' => 'date',

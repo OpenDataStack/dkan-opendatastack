@@ -14,6 +14,9 @@ function custom_config_features_master_defaults() {
   
   // Add and remove modules where necessary.
   unset($features_master['modules']['example']);
-  
-  return $features_master;
+  $features_master['modules']['dkan_resource_elasticsearch'] = 'dkan_resource_elasticsearch';
+    $features_master['modules']['jsonb'] = 'jsonb';
+
+
+    return $features_master;
 }

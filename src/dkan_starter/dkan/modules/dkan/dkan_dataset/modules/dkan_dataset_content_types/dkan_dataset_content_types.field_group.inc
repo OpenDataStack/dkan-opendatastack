@@ -59,7 +59,7 @@ function dkan_dataset_content_types_field_group_info() {
       ),
     ),
   );
-  $field_groups['group_additional|node|dataset|default'] = $field_group;
+  $field_groups[''] = $field_group;
 
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
@@ -83,19 +83,19 @@ function dkan_dataset_content_types_field_group_info() {
       6 => 'field_data_dictionary_type',
       7 => 'field_frequency',
       8 => 'field_granularity',
-      9 => 'field_is_part_of',
-      10 => 'field_landing_page',
-      11 => 'field_language',
-      13 => 'field_pod_theme',
-      14 => 'field_public_access_level',
-      15 => 'field_related_content',
-      16 => 'field_resources',
-      17 => 'field_rights',
-      18 => 'field_spatial',
-      19 => 'field_spatial_geographical_cover',
-      20 => 'field_temporal_coverage',
-      21 => 'field_harvest_source_issued',
-      22 => 'field_harvest_source_modified',
+      9 => 'field_harvest_source_issued',
+      10 => 'field_harvest_source_modified',
+      11 => 'field_is_part_of',
+      12 => 'field_landing_page',
+      13 => 'field_language',
+      14 => 'field_pod_theme',
+      15 => 'field_public_access_level',
+      16 => 'field_related_content',
+      17 => 'field_resources',
+      18 => 'field_rights',
+      19 => 'field_spatial',
+      20 => 'field_spatial_geographical_cover',
+      21 => 'field_temporal_coverage',
     ),
     'format_type' => 'fieldset',
     'format_settings' => array(
@@ -108,7 +108,7 @@ function dkan_dataset_content_types_field_group_info() {
       'formatter' => 'open',
     ),
   );
-  $field_groups['group_additional|node|dataset|form'] = $field_group;
+  $field_groups[''] = $field_group;
 
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
@@ -135,7 +135,7 @@ function dkan_dataset_content_types_field_group_info() {
       ),
     ),
   );
-  $field_groups['group_data|node|resource|form'] = $field_group;
+  $field_groups[''] = $field_group;
 
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
@@ -163,7 +163,7 @@ function dkan_dataset_content_types_field_group_info() {
       'formatter' => 'closed',
     ),
   );
-  $field_groups['group_link_api|node|resource|form'] = $field_group;
+  $field_groups[''] = $field_group;
 
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
@@ -191,7 +191,7 @@ function dkan_dataset_content_types_field_group_info() {
       'formatter' => 'closed',
     ),
   );
-  $field_groups['group_link_file|node|resource|form'] = $field_group;
+  $field_groups[''] = $field_group;
 
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
@@ -224,7 +224,7 @@ function dkan_dataset_content_types_field_group_info() {
       'formatter' => 'open',
     ),
   );
-  $field_groups['group_primary|node|dataset|form'] = $field_group;
+  $field_groups[''] = $field_group;
 
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
@@ -252,7 +252,7 @@ function dkan_dataset_content_types_field_group_info() {
       'formatter' => 'closed',
     ),
   );
-  $field_groups['group_upload|node|resource|form'] = $field_group;
+  $field_groups[''] = $field_group;
 
   // Translatables
   // Included for use with string extractors like potx.
