@@ -1,21 +1,45 @@
 <?php
 
+require 'vendor/autoload.php';
+
+/**
+ * Import configuration from local files
+ */
+function import_configurations() {
+    // load list of json files from Requests/
+    $dir = new \DirectoryIterator(dirname(__FILE__) . "/Examples/Requests/");
+    $import_configurations = [];
+
+    foreach ($dir as $file_info) {
+        if (preg_match("/^.+\.json$/i", $file_info->getFilename())) {
+            $import_configurations[] = json_decode(file_get_contents($file_info->getPath() . '/' . $file_info->getFilename(), TRUE));
+        }
+    }
+
+    return $import_configurations;
+}
+
 /**
  * Implements hook_node_insert().
  */
-function dkan_resource_elasticsearch_node_insert($node)
-{
-    if ($node->type == 'resource') {
-        $nodeTitle = "<i>" . $node->title . "</i>";
+function dkan_resource_elasticsearch_node_insert($node) {
+    if ($node->type == 'dataset') {
+        $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
+        $import_configurations = import_configurations();
+        $import_configurations = array_pop($import_configurations);
+
+        $node_title = "<i>" . $node->title . "</i>";
         // output success message only if Elastic_schema field has a schema
-        $field = field_get_items('node', $node, 'field_elastic_schema');
-        if ($field) {
-            drupal_set_message(t('The resource ' . $nodeTitle . ' has a schema.'), 'status');
-        } else {
+        $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value']);
+        $response = $client->addImportConfiguration($elastic_schema);
+        if ($elastic_schema) {
+            drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node_title]), 'status');
+        }
+        else {
             drupal_set_message(t("Field elastic_schema doesn't have a schema"), 'error');
         }
-        //drupal_set_message(t("Resource ' . $nodeTitle . ' has been created!"), "status");
-    } else {
+    }
+    else {
         drupal_set_message(t("I'm not a Resource!"), "error");
     }
 }
@@ -23,16 +47,15 @@ function dkan_resource_elasticsearch_node_insert($node)
 /**
  * Implements hook_node_update().
  */
-function dkan_resource_elasticsearch_node_update($node)
-{
-    $nodeTitle = "<i>" . $node->title . "</i>";
-    //drupal_set_message(t('The resource ' . $nodeTitle . ' has been UPDATED.'), 'status');
+function dkan_resource_elasticsearch_node_update($node) {
+    $node_title = "<i>" . $node->title . "</i>";
     // output success message only if Elastic_schema field has a schema
     $field = field_get_items('node', $node, 'field_elastic_schema');
 
     if ($field) {
-        drupal_set_message(t('The resource ' . $nodeTitle . ' has a schema.'), 'status');
-    } else {
+        drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node_title]), 'status');
+    }
+    else {
         drupal_set_message(t("Field elastic_schema doesn't have a schema"), 'error');
     }
 }
@@ -40,17 +63,15 @@ function dkan_resource_elasticsearch_node_update($node)
 /**
  * Implements hook_node_delete().
  */
-function dkan_resource_elasticsearch_node_delete($node)
-{
-    $nodeTitle = "<i>" . $node->title . "</i>";
-    drupal_set_message(t('The resource ' . $nodeTitle . ' has been DELETED.'), 'status');
+function dkan_resource_elasticsearch_node_delete($node) {
+    $node_title = "<i>" . $node->title . "</i>";
+    drupal_set_message(t('The resource @node_title has been DELETED.', ['@node_title' => $node_title]), 'status');
 }
 
 /**
  * Implements hook_permission().
  */
-function dkan_resource_elasticsearch_permission()
-{
+function dkan_resource_elasticsearch_permission() {
     return array(
         "administer logstash" => array(
             "title" => t('Administer logstash'),
@@ -62,8 +83,7 @@ function dkan_resource_elasticsearch_permission()
 /**
  * Implements hook_menu().
  */
-function dkan_resource_elasticsearch_menu()
-{
+function dkan_resource_elasticsearch_menu() {
     $items = array();
 
     $items['node/%/resource_stash'] = [
@@ -83,16 +103,14 @@ function dkan_resource_elasticsearch_menu()
 /**
  * Callback for 'node/%/feedback'.
  */
-function elasticsearch_log_page($nid = NULL)
-{
+function elasticsearch_log_page($nid = NULL) {
     return 'Hello world';
 }
 
 /**
  * Access callback function for "Add Feedback" menu tab.
  */
-function elasticsearch_log_access_tab($nid)
-{
+function elasticsearch_log_access_tab($nid) {
     $types_allowed = array(
         'resource',
     );
@@ -110,7 +128,7 @@ function elasticsearch_log_access_tab($nid)
 /**
  * Implements hook_field_default_field_bases_alter().
  */
-function dkan_dataset_content_types_field_default_field_bases_alter(&$field_bases){
+function dkan_dataset_content_types_field_default_field_bases_alter(&$field_bases) {
     if (!isset($field_bases['field_elastic_schema'])) {
         // Exported field_base: 'field_elastic_schema'.
         $field_bases['field_elastic_schema'] = array(
@@ -132,8 +150,7 @@ function dkan_dataset_content_types_field_default_field_bases_alter(&$field_base
 /**
  * Implements hook_field_default_field_instances_alter().
  */
-function dkan_dataset_content_types_field_default_field_instances_alter(&$field_instances)
-{
+function dkan_dataset_content_types_field_default_field_instances_alter(&$field_instances) {
     if (!isset($field_instances['node-dataset-field_elastic_schema'])) {
         // Exported field_instance: 'node-dataset-field_elastic_schema'.
         $field_instances['node-dataset-field_elastic_schema'] = array(
@@ -180,4 +197,4 @@ function dkan_dataset_content_types_field_default_field_instances_alter(&$field_
             ),
         );
     }
-    }
+}
