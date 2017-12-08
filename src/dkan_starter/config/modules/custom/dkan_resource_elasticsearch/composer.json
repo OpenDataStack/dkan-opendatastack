@@ -1,0 +1,13 @@
+{
+    "name": "taieb/dkan_resource_elasticsearch",
+    "description": "A PHP client that contains helper functions for the dkan_resource_elasticsearch module in order to publish csv files from DKAN to ELasticSearch",
+    "authors": [
+        {
+            "name": "Taieb Baccouch",
+            "email": "taieb@angrycactus.biz"
+        }
+    ],
+    "require": {
+        "opendatastack/elasticsearch-import-api-client": "dev-master"
+    }
+}
