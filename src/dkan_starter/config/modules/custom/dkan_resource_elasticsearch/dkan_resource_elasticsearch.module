@@ -3,54 +3,61 @@
 require 'vendor/autoload.php';
 
 /**
- * Import configuration from local files
- */
-function import_configurations() {
-    // load list of json files from Requests/
-    $dir = new \DirectoryIterator(dirname(__FILE__) . "/Examples/Requests/");
-    $import_configurations = [];
-
-    foreach ($dir as $file_info) {
-        if (preg_match("/^.+\.json$/i", $file_info->getFilename())) {
-            $import_configurations[] = json_decode(file_get_contents($file_info->getPath() . '/' . $file_info->getFilename(), TRUE));
-        }
-    }
-
-    return $import_configurations;
-}
-
-/**
  * Implements hook_node_insert().
  */
 function dkan_resource_elasticsearch_node_insert($node) {
-    if ($node->type == 'dataset') {
-        $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
-        $import_configurations = import_configurations();
-        $import_configurations = array_pop($import_configurations);
+  $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
+  $response = array();
 
-        // Build configuration
-        $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
-        $uuid = (string) $node->uuid;
-        $type = 'opendatastack/csv-importer';
-        $configuraton_header = array(
-            'id' => $uuid,
-            'type' => $type,
-        );
-        $json_doc = array();
-        $json_doc = array_merge($configuraton_header, $elastic_schema);
+  if ($node->type == 'dataset') {
+      // Build configuration
+      $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
+      $uuid = (string) $node->uuid;
+      $type = 'opendatastack/csv-importer';
+      $configuraton_header = array(
+          'id' => $uuid,
+          'type' => $type,
+      );
+      $json_doc = array();
+      $json_doc = array_merge($configuraton_header, $elastic_schema);
 
-        // Add configuration
-        $response = $client->addImportConfiguration($json_doc);
-        if ($elastic_schema) {
-            drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node->title]), 'status');
-        }
-        else {
-            drupal_set_message(t("Field elastic_schema doesn't have a schema"), 'error');
-        }
+      // Add configuration
+      $response = $client->addImportConfiguration($json_doc);
+      $status = $response['log']['status'];
+      $flag = $response['log']['flag'];
+      if($status == 'success' & $flag == 'new') {
+          drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
+              '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
+              ]
+          ), 'status');
+      }
+  }
+  elseif ($node->type == 'resource') {
+    // Get the current dataset uuid value
+    $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+    $result = db_select('node', 'n')
+    ->fields('n',array('uuid'))
+    ->condition('n.nid', $dataset_nid)
+    ->range(0, 1)
+    ->execute()
+    ->fetchAssoc();
+
+    // Get dataset uuid and resource csv file uri
+    $uuid = $result['uuid'];
+    $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
+    $file = file_load($fid);
+    $url = file_create_url($file->uri);
+
+    $response = $client->requestImportConfigurationAction($uuid, $url);
+    $status = $response['log']['status'];
+    $flag = $response['log']['flag'];
+    if($status == 'success' & $flag == 'queued') {
+        drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
+            '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
+            ]
+        ), 'status');
     }
-    else {
-        drupal_set_message(t("I'm not a Resource!"), "error");
-    }
+  }
 }
 
 /**
