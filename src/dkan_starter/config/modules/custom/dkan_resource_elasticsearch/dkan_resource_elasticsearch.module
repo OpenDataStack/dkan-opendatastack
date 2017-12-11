@@ -28,12 +28,21 @@ function dkan_resource_elasticsearch_node_insert($node) {
         $import_configurations = import_configurations();
         $import_configurations = array_pop($import_configurations);
 
-        $node_title = "<i>" . $node->title . "</i>";
-        // output success message only if Elastic_schema field has a schema
-        $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value']);
-        $response = $client->addImportConfiguration($elastic_schema);
+        // Build configuration
+        $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
+        $uuid = (string) $node->uuid;
+        $type = 'opendatastack/csv-importer';
+        $configuraton_header = array(
+            'id' => $uuid,
+            'type' => $type,
+        );
+        $json_doc = array();
+        $json_doc = array_merge($configuraton_header, $elastic_schema);
+
+        // Add configuration
+        $response = $client->addImportConfiguration($json_doc);
         if ($elastic_schema) {
-            drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node_title]), 'status');
+            drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node->title]), 'status');
         }
         else {
             drupal_set_message(t("Field elastic_schema doesn't have a schema"), 'error');
@@ -48,12 +57,11 @@ function dkan_resource_elasticsearch_node_insert($node) {
  * Implements hook_node_update().
  */
 function dkan_resource_elasticsearch_node_update($node) {
-    $node_title = "<i>" . $node->title . "</i>";
     // output success message only if Elastic_schema field has a schema
     $field = field_get_items('node', $node, 'field_elastic_schema');
 
     if ($field) {
-        drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node_title]), 'status');
+        drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node->title]), 'status');
     }
     else {
         drupal_set_message(t("Field elastic_schema doesn't have a schema"), 'error');
@@ -64,8 +72,7 @@ function dkan_resource_elasticsearch_node_update($node) {
  * Implements hook_node_delete().
  */
 function dkan_resource_elasticsearch_node_delete($node) {
-    $node_title = "<i>" . $node->title . "</i>";
-    drupal_set_message(t('The resource @node_title has been DELETED.', ['@node_title' => $node_title]), 'status');
+    drupal_set_message(t('The resource @node_title has been DELETED.', ['@node_title' => $node->title]), 'status');
 }
 
 /**
