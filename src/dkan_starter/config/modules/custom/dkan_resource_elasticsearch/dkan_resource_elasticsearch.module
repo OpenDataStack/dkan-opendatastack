@@ -46,9 +46,9 @@ function dkan_resource_elasticsearch_node_insert($node) {
     $uuid = $result['uuid'];
     $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
     $file = file_load($fid);
-    $url = file_create_url($file->uri);
+    $uri = file_create_url($file->uri);
 
-    $response = $client->requestImportConfigurationAction($uuid, $url);
+    $response = $client->requestImport($uuid, $uri);
     $status = $response['log']['status'];
     $flag = $response['log']['flag'];
     if($status == 'success' & $flag == 'queued') {
