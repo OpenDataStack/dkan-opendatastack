@@ -5,7 +5,7 @@ require 'vendor/autoload.php';
 /**
  * Implements hook_node_insert().
  */
-function dkan_resource_elasticsearch_node_insert($node) {
+function dkan_opendatastack_elasticsearch_node_insert($node) {
   $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
   $response = array();
 
@@ -63,7 +63,7 @@ function dkan_resource_elasticsearch_node_insert($node) {
 /**
  * Implements hook_node_update().
  */
-function dkan_resource_elasticsearch_node_update($node) {
+function dkan_opendatastack_elasticsearch_node_update($node) {
     // output success message only if Elastic_schema field has a schema
     $field = field_get_items('node', $node, 'field_elastic_schema');
 
@@ -78,14 +78,14 @@ function dkan_resource_elasticsearch_node_update($node) {
 /**
  * Implements hook_node_delete().
  */
-function dkan_resource_elasticsearch_node_delete($node) {
+function dkan_opendatastack_elasticsearch_node_delete($node) {
     drupal_set_message(t('The resource @node_title has been DELETED.', ['@node_title' => $node->title]), 'status');
 }
 
 /**
  * Implements hook_permission().
  */
-function dkan_resource_elasticsearch_permission() {
+function dkan_opendatastack_elasticsearch_permission() {
     return array(
         "administer logstash" => array(
             "title" => t('Administer logstash'),
@@ -97,7 +97,7 @@ function dkan_resource_elasticsearch_permission() {
 /**
  * Implements hook_menu().
  */
-function dkan_resource_elasticsearch_menu() {
+function dkan_opendatastack_elasticsearch_menu() {
     $items = array();
 
     $items['node/%/resource_stash'] = [

@@ -11,10 +11,10 @@ function custom_config_features_master_defaults() {
   module_load_include('module', 'data_config');
 
   $features_master = data_config_enabled_modules();
-  
+
   // Add and remove modules where necessary.
   unset($features_master['modules']['example']);
-  $features_master['modules']['dkan_resource_elasticsearch'] = 'dkan_resource_elasticsearch';
+  $features_master['modules']['dkan_opendatastack_elasticsearch'] = 'dkan_opendatastack_elasticsearch';
     $features_master['modules']['jsonb'] = 'jsonb';
 
 
