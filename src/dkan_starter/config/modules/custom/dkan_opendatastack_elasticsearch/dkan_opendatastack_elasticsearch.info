@@ -1,4 +1,4 @@
 core = "7.x"
-description = "Dkan resource stash module."
-name = "Dkan resource stash module"
+description = "Dkan OpenDataStack module."
+name = "Dkan OpenDataStack module"
 dependencies[] = jsonb
