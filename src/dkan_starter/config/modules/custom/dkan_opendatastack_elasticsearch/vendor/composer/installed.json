@@ -245,12 +245,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/OpenDataStack/elasticsearch-import-api-client.git",
-            "reference": "ba692381e384f199308079507145b27e0e4c67e5"
+            "reference": "87012119f3bd606ca7b1bf5a060df550095550f3"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/OpenDataStack/elasticsearch-import-api-client/zipball/ba692381e384f199308079507145b27e0e4c67e5",
-            "reference": "ba692381e384f199308079507145b27e0e4c67e5",
+            "url": "https://api.github.com/repos/OpenDataStack/elasticsearch-import-api-client/zipball/87012119f3bd606ca7b1bf5a060df550095550f3",
+            "reference": "87012119f3bd606ca7b1bf5a060df550095550f3",
             "shasum": ""
         },
         "require": {
@@ -258,10 +258,9 @@
             "php": ">=5.6"
         },
         "require-dev": {
-            "nategood/httpful": "0.2.20",
             "phpunit/phpunit": "6.4.*"
         },
-        "time": "2017-12-05T16:47:27+00:00",
+        "time": "2017-12-12T09:30:05+00:00",
         "type": "library",
         "installation-source": "source",
         "autoload": {
