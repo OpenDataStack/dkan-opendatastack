@@ -34,6 +34,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         }
       } catch (\GuzzleHttp\Exception\RequestException $ex) {
         drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage());
       }
   }
   elseif ($node->type == 'resource') {
@@ -46,14 +47,23 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
     ->execute()
     ->fetchAssoc();
 
+    // TODO Check field_link_remote_file for remote link as well.
     // Get dataset uuid and resource csv file uri
     $uuid = $result['uuid'];
     $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
     $file = file_load($fid);
     $uri = file_create_url($file->uri);
+    $uuid_resource = $node->uuid;
+
+    $import_configuration = array(
+        "udid" => $uuid,
+        "id"=> $uuid_resource,
+        "type" => "opendatastack/csv-importer",
+        "url" => $uri
+    );
 
     try {
-        $response = $client->requestImport($uuid, $uri);
+        $response = $client->requestImport($import_configuration);
         $status = $response['log']['status'];
         $flag = $response['log']['flag'];
         if($status == 'success' & $flag == 'queued') {
@@ -64,6 +74,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         }
     } catch (\GuzzleHttp\Exception\RequestException $ex) {
         drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage());
     }
   }
 }
