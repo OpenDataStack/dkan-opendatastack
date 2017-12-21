@@ -22,14 +22,18 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
       $json_doc = array_merge($configuraton_header, $elastic_schema);
 
       // Add configuration
-      $response = $client->addImportConfiguration($json_doc);
-      $status = $response['log']['status'];
-      $flag = $response['log']['flag'];
-      if($status == 'success' & $flag == 'new') {
-          drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
-              '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
-              ]
-          ), 'status');
+      try {
+        $response = $client->addImportConfiguration($json_doc);
+        $status = $response['log']['status'];
+        $flag = $response['log']['flag'];
+        if($status == 'success' & $flag == 'new') {
+            drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
+                '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
+                ]
+            ), 'status');
+        }
+      } catch (\GuzzleHttp\Exception\RequestException $ex) {
+        drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
       }
   }
   elseif ($node->type == 'resource') {
@@ -48,14 +52,18 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
     $file = file_load($fid);
     $uri = file_create_url($file->uri);
 
-    $response = $client->requestImport($uuid, $uri);
-    $status = $response['log']['status'];
-    $flag = $response['log']['flag'];
-    if($status == 'success' & $flag == 'queued') {
-        drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
-            '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
-            ]
-        ), 'status');
+    try {
+        $response = $client->requestImport($uuid, $uri);
+        $status = $response['log']['status'];
+        $flag = $response['log']['flag'];
+        if($status == 'success' & $flag == 'queued') {
+            drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
+                '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
+                ]
+            ), 'status');
+        }
+    } catch (\GuzzleHttp\Exception\RequestException $ex) {
+        drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
     }
   }
 }
