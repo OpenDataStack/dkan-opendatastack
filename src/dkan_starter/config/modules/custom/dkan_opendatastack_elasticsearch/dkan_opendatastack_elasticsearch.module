@@ -26,6 +26,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         $response = $client->addImportConfiguration($json_doc);
         $status = $response['log']['status'];
         $flag = $response['log']['flag'];
+
         if($status == 'success' & $flag == 'new') {
             drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
                 '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
@@ -38,7 +39,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
       }
   }
   elseif ($node->type == 'resource') {
-    // Get the current dataset uuid value
+    // Get the current dataset and resource uuid values
     $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
     $result = db_select('node', 'n')
     ->fields('n',array('uuid'))
@@ -47,25 +48,32 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
     ->execute()
     ->fetchAssoc();
 
-    // TODO Check field_link_remote_file for remote link as well.
-    // Get dataset uuid and resource csv file uri
     $uuid = $result['uuid'];
-    $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
-    $file = file_load($fid);
-    $uri = file_create_url($file->uri);
     $uuid_resource = $node->uuid;
 
-    $import_configuration = array(
-        "udid" => $uuid,
-        "id"=> $uuid_resource,
-        "type" => "opendatastack/csv-importer",
-        "url" => $uri
+    $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+    if (empty($remote_file)) {
+        $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
+        $file = file_load($fid);
+        $uri = file_create_url($file->uri);
+    }
+    else {
+        $uri = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+    }
+
+    // Prepare the data to send
+    $data = array(
+      "udid" => $uuid,
+      "id"=> $uuid_resource,
+      "type" => "opendatastack/csv-importer",
+      "url" => $uri
     );
 
     try {
-        $response = $client->requestImport($import_configuration);
+        $response = $client->requestImport($data);
         $status = $response['log']['status'];
         $flag = $response['log']['flag'];
+
         if($status == 'success' & $flag == 'queued') {
             drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
                 '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
