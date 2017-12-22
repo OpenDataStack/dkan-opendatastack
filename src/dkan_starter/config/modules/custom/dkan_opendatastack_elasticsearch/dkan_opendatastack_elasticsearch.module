@@ -27,7 +27,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         $status = $response['log']['status'];
         $flag = $response['log']['flag'];
 
-        if($status == 'success' & $flag == 'new') {
+        if ($status == 'success' & $flag == 'new') {
             drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
                 '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
                 ]
@@ -42,7 +42,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
     // Get the current dataset and resource uuid values
     $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
     $result = db_select('node', 'n')
-    ->fields('n',array('uuid'))
+    ->fields('n', array('uuid'))
     ->condition('n.nid', $dataset_nid)
     ->range(0, 1)
     ->execute()
@@ -50,8 +50,8 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
 
     $uuid = $result['uuid'];
     $uuid_resource = $node->uuid;
-
     $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+
     if (empty($remote_file)) {
         $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
         $file = file_load($fid);
@@ -64,7 +64,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
     // Prepare the data to send
     $data = array(
       "udid" => $uuid,
-      "id"=> $uuid_resource,
+      "id" => $uuid_resource,
       "type" => "opendatastack/csv-importer",
       "url" => $uri
     );
@@ -74,7 +74,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         $status = $response['log']['status'];
         $flag = $response['log']['flag'];
 
-        if($status == 'success' & $flag == 'queued') {
+        if ($status == 'success' & $flag == 'queued') {
             drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
                 '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
                 ]
@@ -127,31 +127,42 @@ function dkan_opendatastack_elasticsearch_permission() {
 function dkan_opendatastack_elasticsearch_menu() {
     $items = array();
 
-    $items['node/%/resource_stash'] = [
-        'title' => 'Elastic Search logs',
+    $items['node/%/resource_logs'] = array(
+        'title' => 'ElasticSearch status',
         'description' => 'Display ElasticSearch logs.',
-        'page callback' => 'elasticsearch_log_page',
+        'page callback' => 'elasticsearch_resource_log_page',
         'page arguments' => [1],
-        'access callback' => 'elasticsearch_log_access_tab',
+        'access callback' => 'elasticsearch_log_resource_access_tab',
         'access arguments' => [1],
         'type' => MENU_LOCAL_TASK,
         'weight' => 100,
-    ];
+    );
+
+    $items['node/%/dataset_logs'] = array(
+        'title' => 'ElasticSearch status',
+        'description' => 'Display ElasticSearch logs related to dataset.',
+        'page callback' => 'elasticsearch_dataset_log_page',
+        'page arguments' => [1],
+        'access callback' => 'elasticsearch_log_dataset_access_tab',
+        'access arguments' => [1],
+        'type' => MENU_LOCAL_TASK,
+        'weight' => 100,
+    );
 
     return $items;
 }
 
 /**
- * Callback for 'node/%/feedback'.
+ * Callback for 'node/%/resource_log'.
  */
-function elasticsearch_log_page($nid = NULL) {
-    return 'Hello world';
+function elasticsearch_resource_log_page($nid = NULL) {
+    return 'Hello resource';
 }
 
 /**
- * Access callback function for "Add Feedback" menu tab.
+ * Access callback function for "Add resource" menu tab.
  */
-function elasticsearch_log_access_tab($nid) {
+function elasticsearch_log_resource_access_tab($nid) {
     $types_allowed = array(
         'resource',
     );
@@ -161,7 +172,49 @@ function elasticsearch_log_access_tab($nid) {
     if (!empty($node)) {
         return in_array($node->type, $types_allowed);
     }
+    // Default behaviour: hide the menu.
+    return FALSE;
+}
 
+/**
+ * Callback for 'node/%/dataset_log'.
+ */
+function elasticsearch_dataset_log_page($nid = NULL) {
+    // Get the current dataset uuid
+    $result = db_select('node', 'n')
+        ->fields('n', array('uuid'))
+        ->condition('n.nid', $nid)
+        ->range(0, 1)
+        ->execute()
+        ->fetchAssoc();
+
+    $uuid = $result['uuid'];
+    // Get the configuration status
+    $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
+    $response = array();
+    try {
+        $response = $client->statusConfiguration($uuid);
+    } catch (\GuzzleHttp\Exception\RequestException $ex) {
+        drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage());
+    }
+
+    return $response;
+}
+
+/**
+ * Access callback function for "Add dataset" menu tab.
+ */
+function elasticsearch_log_dataset_access_tab($nid) {
+    $types_allowed = array(
+        'dataset',
+    );
+
+    $node = node_load($nid);
+
+    if (!empty($node)) {
+        return in_array($node->type, $types_allowed);
+    }
     // Default behaviour: hide the menu.
     return FALSE;
 }
