@@ -35,7 +35,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         }
       } catch (\GuzzleHttp\Exception\RequestException $ex) {
         drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage());
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
       }
   }
   elseif ($node->type == 'resource') {
@@ -82,7 +82,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
         }
     } catch (\GuzzleHttp\Exception\RequestException $ex) {
         drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage());
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
     }
   }
 }
@@ -196,7 +196,7 @@ function elasticsearch_dataset_log_page($nid = NULL) {
         $response = $client->statusConfiguration($uuid);
     } catch (\GuzzleHttp\Exception\RequestException $ex) {
         drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage());
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
     }
 
     return $response;
