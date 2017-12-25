@@ -14,9 +14,15 @@ function custom_config_features_master_defaults() {
 
   // Add and remove modules where necessary.
   unset($features_master['modules']['example']);
-  $features_master['modules']['dkan_opendatastack_elasticsearch'] = 'dkan_opendatastack_elasticsearch';
-    $features_master['modules']['jsonb'] = 'jsonb';
 
+  // OpenDataStack and related modules.
+  $features_master['modules'] = array_merge(
+    $features_master['modules'],
+    array(
+      'dkan_opendatastack_elasticsearch' => 'dkan_opendatastack_elasticsearch',
+      'jsonb' => 'jsonb',
+      'dkan_opendatastack_kibana' => 'dkan_opendatastack_kibana',
+    ));
 
-    return $features_master;
+  return $features_master;
 }
