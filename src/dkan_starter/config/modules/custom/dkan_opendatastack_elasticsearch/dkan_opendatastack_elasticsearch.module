@@ -6,7 +6,11 @@ require 'vendor/autoload.php';
  * Implements hook_node_insert().
  */
 function dkan_opendatastack_elasticsearch_node_insert($node) {
-  $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
+  // Get ElasticSearch host and
+  $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_HOST'));
+  $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
+
+  $client = new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
   $response = array();
 
   if ($node->type == 'dataset') {
