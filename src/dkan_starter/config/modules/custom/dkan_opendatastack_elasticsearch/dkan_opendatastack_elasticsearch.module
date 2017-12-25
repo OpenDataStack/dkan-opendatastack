@@ -6,7 +6,7 @@ require 'vendor/autoload.php';
  * Implements hook_node_insert().
  */
 function dkan_opendatastack_elasticsearch_node_insert($node) {
-  // Get ElasticSearch host and
+  // Get the Symfony API host and API KEY from ENV variables
   $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_HOST'));
   $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
 
@@ -130,24 +130,12 @@ function dkan_opendatastack_elasticsearch_permission() {
  */
 function dkan_opendatastack_elasticsearch_menu() {
     $items = array();
-
-    $items['node/%/resource_logs'] = array(
+    $items['node/%/elasticsearchlogs'] = array(
         'title' => 'ElasticSearch status',
         'description' => 'Display ElasticSearch logs.',
-        'page callback' => 'elasticsearch_resource_log_page',
+        'page callback' => 'dkan_opendatastack_elasticsearch_log_page',
         'page arguments' => [1],
-        'access callback' => 'elasticsearch_log_resource_access_tab',
-        'access arguments' => [1],
-        'type' => MENU_LOCAL_TASK,
-        'weight' => 100,
-    );
-
-    $items['node/%/dataset_logs'] = array(
-        'title' => 'ElasticSearch status',
-        'description' => 'Display ElasticSearch logs related to dataset.',
-        'page callback' => 'elasticsearch_dataset_log_page',
-        'page arguments' => [1],
-        'access callback' => 'elasticsearch_log_dataset_access_tab',
+        'access callback' => 'dkan_opendatastack_elasticsearch_log_access',
         'access arguments' => [1],
         'type' => MENU_LOCAL_TASK,
         'weight' => 100,
@@ -157,17 +145,68 @@ function dkan_opendatastack_elasticsearch_menu() {
 }
 
 /**
- * Callback for 'node/%/resource_log'.
+ * Callback for 'node/%/elasticsearchlogs'.
  */
-function elasticsearch_resource_log_page($nid = NULL) {
-    return 'Hello resource';
+function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
+    $node = node_load($nid);
+    if (!empty($node)) {
+        // Get the Symfony API host and API KEY from ENV variables
+        $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_HOST'));
+        $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
+
+        $client = new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
+        $response = array();
+
+        if ($node->type == 'dataset') {
+            // Get the current node uuid
+            $result = db_select('node', 'n')
+                ->fields('n', array('uuid'))
+                ->condition('n.nid', $nid)
+                ->range(0, 1)
+                ->execute()
+                ->fetchAssoc();
+
+            $uuid = $result['uuid'];
+            try {
+                $response = $client->statusConfiguration($uuid);
+            } catch (\GuzzleHttp\Exception\RequestException $ex) {
+                drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
+                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+            }
+            return $response;
+        }
+        elseif ($node->type == 'resource') {
+            // Get the current resource uuid and dataset uuid values
+            $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+            $result = db_select('node', 'n')
+                ->fields('n', array('uuid'))
+                ->condition('n.nid', $dataset_nid)
+                ->range(0, 1)
+                ->execute()
+                ->fetchAssoc();
+
+            $uuid = $result['uuid'];
+            $uuid_resource = $node->uuid;
+            try {
+                $response = $client->statusResource($uuid, $uuid_resource);
+            } catch (\GuzzleHttp\Exception\RequestException $ex) {
+                drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
+                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+            }
+            return $response;
+        }
+    }
+    else {
+        drupal_set_message(t('Node is invalid!', 'error'));
+    }
 }
 
 /**
- * Access callback function for "Add resource" menu tab.
+ * Access callback function for "Add dataset" and "Add resource" menu tab.
  */
-function elasticsearch_log_resource_access_tab($nid) {
+function dkan_opendatastack_elasticsearch_log_access($nid) {
     $types_allowed = array(
+        'dataset',
         'resource',
     );
 
@@ -184,26 +223,7 @@ function elasticsearch_log_resource_access_tab($nid) {
  * Callback for 'node/%/dataset_log'.
  */
 function elasticsearch_dataset_log_page($nid = NULL) {
-    // Get the current dataset uuid
-    $result = db_select('node', 'n')
-        ->fields('n', array('uuid'))
-        ->condition('n.nid', $nid)
-        ->range(0, 1)
-        ->execute()
-        ->fetchAssoc();
 
-    $uuid = $result['uuid'];
-    // Get the configuration status
-    $client = new \OpenDataStack\Client\ElasticSearchImportClient('http://172.22.0.1:8088', '283y2daksjn');
-    $response = array();
-    try {
-        $response = $client->statusConfiguration($uuid);
-    } catch (\GuzzleHttp\Exception\RequestException $ex) {
-        drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
-    }
-
-    return $response;
 }
 
 /**
