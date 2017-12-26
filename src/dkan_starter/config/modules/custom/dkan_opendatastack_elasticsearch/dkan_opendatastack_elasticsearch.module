@@ -7,7 +7,7 @@ require 'vendor/autoload.php';
  */
 function dkan_opendatastack_elasticsearch_node_insert($node) {
   // Get the Symfony API host and API KEY from ENV variables
-  $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_HOST'));
+  $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_api_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_HOST'));
   $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
 
   $client = new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
