@@ -6,51 +6,63 @@ require 'vendor/autoload.php';
  * Implements hook_node_insert().
  */
 function dkan_opendatastack_elasticsearch_node_insert($node) {
-  // Get the Symfony API host and API KEY from ENV variables
-  $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_api_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_HOST'));
-  $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
-
-  $client = new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
+  $client = _dkan_opendatastack_elasticsearch_get_client();
   $response = array();
 
   if ($node->type == 'dataset') {
-      // Build configuration
-      $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
-      $uuid = (string) $node->uuid;
-      $type = 'opendatastack/csv-importer';
-      $configuraton_header = array(
-          'id' => $uuid,
-          'type' => $type,
-      );
-      $json_doc = array();
-      $json_doc = array_merge($configuraton_header, $elastic_schema);
-
-      // Add configuration
-      try {
-        $response = $client->addImportConfiguration($json_doc);
-        $status = $response['log']['status'];
-        $flag = $response['log']['flag'];
-
-        if ($status == 'success' & $flag == 'new') {
-            drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
-                '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
-                ]
-            ), 'status');
-        }
-      } catch (\GuzzleHttp\Exception\RequestException $ex) {
-        drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
-      }
+      _dkan_opendatastack_elasticsearch_add_import_configuration($node, $client);
   }
   elseif ($node->type == 'resource') {
+      _dkan_opendatastack_elasticsearch_request_import($node, $client);
+  }
+}
+
+/**
+ * Import dataset configuration
+ */
+function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $client) {
+    if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+        $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
+        $uuid = (string) $node->uuid;
+        $type = 'opendatastack/csv-importer';
+        $configuraton_header = array(
+            'id' => $uuid,
+            'type' => $type,
+        );
+        $json_doc = array();
+        $json_doc = array_merge($configuraton_header, $elastic_schema);
+
+        // Add configuration
+        try {
+            $response = $client->addImportConfiguration($json_doc);
+            $status = $response['log']['status'];
+            $flag = $response['log']['flag'];
+
+            if ($status == 'success' & $flag == 'new') {
+                drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
+                        '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
+                    ]
+                ), 'status');
+            }
+        } catch (\GuzzleHttp\Exception\RequestException $ex) {
+            drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+        }
+    }
+}
+
+/**
+ * Resource request import
+ */
+function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
     // Get the current dataset and resource uuid values
     $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
     $result = db_select('node', 'n')
-    ->fields('n', array('uuid'))
-    ->condition('n.nid', $dataset_nid)
-    ->range(0, 1)
-    ->execute()
-    ->fetchAssoc();
+        ->fields('n', array('uuid'))
+        ->condition('n.nid', $dataset_nid)
+        ->range(0, 1)
+        ->execute()
+        ->fetchAssoc();
 
     $uuid = $result['uuid'];
     $uuid_resource = $node->uuid;
@@ -68,15 +80,15 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
 
     // Prepare the data to send
     $data = array(
-      "udid" => $uuid,
-      "id" => $uuid_resource,
-      "type" => "opendatastack/csv-importer",
-      "url" => $uri
+        "udid" => $uuid,
+        "id" => $uuid_resource,
+        "type" => "opendatastack/csv-importer",
+        "url" => $uri
     );
 
     // Only files with allowed extensions will be published to ElasticSearch
     $supported_extensions = array(
-      'csv',
+        'csv',
     );
 
     if (dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
@@ -85,7 +97,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
             $status = $response['log']['status'];
             $flag = $response['log']['flag'];
 
-            if ($status == 'success' & $flag == 'queued') {
+            if ($status == 'success' && $flag == 'queued') {
                 drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
                         '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
                     ]
@@ -96,7 +108,16 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
             watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
         }
     }
-  }
+}
+
+/**
+ * Get an instance of the Client API
+ */
+function _dkan_opendatastack_elasticsearch_get_client() {
+    $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_api_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_HOST'));
+    $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
+
+    return new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
 }
 
 /**
