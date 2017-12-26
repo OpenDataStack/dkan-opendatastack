@@ -90,8 +90,9 @@ function dkan_opendatastack_kibana_user_logout($account) {
  *
  */
 function dkan_opendatastack_kibana_jwt_claims($username, $id) {
+  // Elasticsearch >= 6.0 wont accept indexs with uppercase chars.
   return array(
-    'x-proxy-user' => $username . '_' . $id,
+    'x-proxy-user' => $username . '_' . strtolower($id),
   );
 }
 
