@@ -57,6 +57,7 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
     $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
 
     if (empty($remote_file)) {
+        // check .csv extension
         $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
         $file = file_load($fid);
         $uri = file_create_url($file->uri);
@@ -73,22 +74,42 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
       "url" => $uri
     );
 
-    try {
-        $response = $client->requestImport($data);
-        $status = $response['log']['status'];
-        $flag = $response['log']['flag'];
+    // Only files with allowed extensions will be published to ElasticSearch
+    $supported_extensions = array(
+      'csv',
+    );
 
-        if ($status == 'success' & $flag == 'queued') {
-            drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
-                '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
-                ]
-            ), 'status');
+    if (dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
+        try {
+            $response = $client->requestImport($data);
+            $status = $response['log']['status'];
+            $flag = $response['log']['flag'];
+
+            if ($status == 'success' & $flag == 'queued') {
+                drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
+                        '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
+                    ]
+                ), 'status');
+            }
+        } catch (\GuzzleHttp\Exception\RequestException $ex) {
+            drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
         }
-    } catch (\GuzzleHttp\Exception\RequestException $ex) {
-        drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
     }
   }
+}
+
+/**
+ * Check allowed extensions
+ */
+function dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions) {
+    $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION)); // Using strtolower to overcome case sensitive
+    if (in_array($extension, $supported_extensions)) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 /**
