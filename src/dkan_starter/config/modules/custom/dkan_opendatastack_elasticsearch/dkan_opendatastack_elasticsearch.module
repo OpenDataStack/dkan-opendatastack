@@ -31,10 +31,8 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
             'id' => $uuid,
             'type' => $type,
         );
-        $response = array();
-        $json_doc = array();
-        $json_doc = array_merge($configuration_header, $elastic_schema);
 
+        $json_doc = array_merge($configuration_header, $elastic_schema);
         // Add configuration
         try {
             $response = $client->addImportConfiguration($json_doc);
@@ -60,14 +58,7 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
 function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
     // Get the current dataset and resource uuid values
     $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-    $result = db_select('node', 'n')
-        ->fields('n', array('uuid'))
-        ->condition('n.nid', $dataset_nid)
-        ->range(0, 1)
-        ->execute()
-        ->fetchAssoc();
-
-    $uuid = $result['uuid'];
+    $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
     $uuid_resource = $node->uuid;
     $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
 
@@ -82,7 +73,7 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
 
     // Prepare the data to send
     $data = array(
-        "udid" => $uuid,
+        "udid" => $dataset_uuid,
         "id" => $uuid_resource,
         "type" => "opendatastack/csv-importer",
         "url" => $uri
@@ -94,7 +85,6 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
     // Only files with supported extensions will be published to ElasticSearch
     if (dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
         try {
-            $response = array();
             $response = $client->requestImport($data);
             $status = $response['log']['status'];
             $flag = $response['log']['flag'];
@@ -198,17 +188,10 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
         $response = array();
 
         if ($node->type == 'dataset') {
-            // Get the current node uuid
-            $result = db_select('node', 'n')
-                ->fields('n', array('uuid'))
-                ->condition('n.nid', $nid)
-                ->range(0, 1)
-                ->execute()
-                ->fetchAssoc();
+            $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($nid);
 
-            $uuid = $result['uuid'];
             try {
-                $response = $client->statusConfiguration($uuid);
+                $response = $client->statusConfiguration($dataset_uuid);
             } catch (\GuzzleHttp\Exception\RequestException $ex) {
                 drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
                 watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
@@ -216,19 +199,12 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
             return $response;
         }
         elseif ($node->type == 'resource') {
-            // Get the current resource uuid and dataset uuid values
             $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-            $result = db_select('node', 'n')
-                ->fields('n', array('uuid'))
-                ->condition('n.nid', $dataset_nid)
-                ->range(0, 1)
-                ->execute()
-                ->fetchAssoc();
-
-            $uuid = $result['uuid'];
+            $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
             $uuid_resource = $node->uuid;
+
             try {
-                $response = $client->statusResource($uuid, $uuid_resource);
+                $response = $client->statusResource($dataset_uuid, $uuid_resource);
             } catch (\GuzzleHttp\Exception\RequestException $ex) {
                 drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
                 watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
@@ -239,6 +215,20 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
     else {
         drupal_set_message(t('Node is invalid!', 'error'));
     }
+}
+
+/**
+ * Get current node uuid
+ */
+function _dkan_opendatastack_elasticsearch_get_node_uuid($nid) {
+    $result = db_select('node', 'n')
+        ->fields('n', array('uuid'))
+        ->condition('n.nid', $nid)
+        ->range(0, 1)
+        ->execute()
+        ->fetchAssoc();
+
+    return $result['uuid'];
 }
 
 /**
