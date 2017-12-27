@@ -83,7 +83,7 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
         'csv',
     );
     // Only files with supported extensions will be published to ElasticSearch
-    if (dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
+    if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
         try {
             $response = $client->requestImport($data);
             $status = $response['log']['status'];
@@ -115,7 +115,7 @@ function _dkan_opendatastack_elasticsearch_import_api_client() {
 /**
  * Check allowed extensions
  */
-function dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions) {
+function _dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions) {
     $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION)); // Using strtolower to overcome case sensitive
     if (in_array($extension, $supported_extensions)) {
         return true;
@@ -238,30 +238,6 @@ function dkan_opendatastack_elasticsearch_log_access($nid) {
     $types_allowed = array(
         'dataset',
         'resource',
-    );
-
-    $node = node_load($nid);
-
-    if (!empty($node)) {
-        return in_array($node->type, $types_allowed);
-    }
-    // Default behaviour: hide the menu.
-    return FALSE;
-}
-
-/**
- * Callback for 'node/%/dataset_log'.
- */
-function elasticsearch_dataset_log_page($nid = NULL) {
-
-}
-
-/**
- * Access callback function for "Add dataset" menu tab.
- */
-function elasticsearch_log_dataset_access_tab($nid) {
-    $types_allowed = array(
-        'dataset',
     );
 
     $node = node_load($nid);
