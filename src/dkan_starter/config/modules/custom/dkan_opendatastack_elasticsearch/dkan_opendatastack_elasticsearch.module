@@ -37,17 +37,15 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
         try {
             $response = $client->addImportConfiguration($json_doc);
             $status = $response['log']['status'];
-            $flag = $response['log']['flag'];
-
-            if ($status == 'success' & $flag == 'new') {
-                drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status and its flag = @flag', [
-                        '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
-                    ]
+            if ($status == 'success') {
+                drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status', array(
+                        '@node_title' => $node->title, '@status' => $status,
+                    )
                 ), 'status');
             }
         } catch (\GuzzleHttp\Exception\RequestException $ex) {
             drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
         }
     }
 }
@@ -87,17 +85,15 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
         try {
             $response = $client->requestImport($data);
             $status = $response['log']['status'];
-            $flag = $response['log']['flag'];
-
-            if ($status == 'success' && $flag == 'queued') {
-                drupal_set_message(t('The resource @node_title Has been updated. Its Status = @status and its flag = @flag', [
-                        '@node_title' => $node->title, '@status' => $status, '@flag' => $flag
-                    ]
+            if ($status == 'success') {
+                drupal_set_message(t('The resource @node_title is queued.', array(
+                        '@node_title' => $node->title,
+                    )
                 ), 'status');
             }
         } catch (\GuzzleHttp\Exception\RequestException $ex) {
             drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
         }
     }
 }
@@ -129,14 +125,13 @@ function _dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_e
  * Implements hook_node_update().
  */
 function dkan_opendatastack_elasticsearch_node_update($node) {
-    // output success message only if Elastic_schema field has a schema
-    $field = field_get_items('node', $node, 'field_elastic_schema');
+    $client = _dkan_opendatastack_elasticsearch_import_api_client();
 
-    if ($field) {
-        drupal_set_message(t('The resource @node_title has a schema.', ['@node_title' => $node->title]), 'status');
+    if ($node->type == 'dataset') {
+
     }
-    else {
-        drupal_set_message(t("Field elastic_schema doesn't have a schema"), 'error');
+    elseif ($node->type == 'resource') {
+        _dkan_opendatastack_elasticsearch_request_import($node, $client);
     }
 }
 
@@ -144,7 +139,7 @@ function dkan_opendatastack_elasticsearch_node_update($node) {
  * Implements hook_node_delete().
  */
 function dkan_opendatastack_elasticsearch_node_delete($node) {
-    drupal_set_message(t('The resource @node_title has been DELETED.', ['@node_title' => $node->title]), 'status');
+    drupal_set_message(t('The resource @node_title has been DELETED.', array('@node_title' => $node->title)), 'status');
 }
 
 /**
@@ -194,7 +189,7 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
                 $response = $client->statusConfiguration($dataset_uuid);
             } catch (\GuzzleHttp\Exception\RequestException $ex) {
                 drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
-                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
             }
             return $response;
         }
@@ -207,7 +202,7 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
                 $response = $client->statusResource($dataset_uuid, $uuid_resource);
             } catch (\GuzzleHttp\Exception\RequestException $ex) {
                 drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
-                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), [], 3);
+                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
             }
             return $response;
         }
