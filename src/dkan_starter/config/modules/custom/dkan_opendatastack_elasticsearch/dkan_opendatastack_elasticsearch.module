@@ -57,7 +57,7 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
     // Get the current dataset and resource uuid values
     $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
     $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
-    $uuid_resource = $node->uuid;
+    $resource_uuid = $node->uuid;
     $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
 
     if (empty($remote_file)) {
@@ -72,7 +72,7 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
     // Prepare the data to send
     $data = array(
         "udid" => $dataset_uuid,
-        "id" => $uuid_resource,
+        "id" => $resource_uuid,
         "type" => "opendatastack/csv-importer",
         "url" => $uri
     );
@@ -139,7 +139,30 @@ function dkan_opendatastack_elasticsearch_node_update($node) {
  * Implements hook_node_delete().
  */
 function dkan_opendatastack_elasticsearch_node_delete($node) {
-    drupal_set_message(t('The resource @node_title has been DELETED.', array('@node_title' => $node->title)), 'status');
+    $client = _dkan_opendatastack_elasticsearch_import_api_client();
+
+    if ($node->type == 'dataset') {
+
+    }
+    elseif ($node->type == 'resource') {
+        $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+        $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
+        $resource_uuid = $node->uuid;
+        try {
+            // Delete the resource from fileSystem folder and from Elasticsearch
+            $response = $client->requestClear($dataset_uuid, $resource_uuid);
+            $status = $response['log']['status'];
+            if ($status == 'success') {
+                drupal_set_message(t('The resource @node_title is deleted.', array(
+                        '@node_title' => $node->title,
+                    )
+                ), 'status');
+            }
+        } catch (\GuzzleHttp\Exception\RequestException $ex) {
+            drupal_set_message(t('Failed deleting the resource from ElasticSearch'), 'error');
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+        }
+    }
 }
 
 /**
@@ -196,10 +219,10 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
         elseif ($node->type == 'resource') {
             $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
             $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
-            $uuid_resource = $node->uuid;
+            $resource_uuid = $node->uuid;
 
             try {
-                $response = $client->statusResource($dataset_uuid, $uuid_resource);
+                $response = $client->statusResource($dataset_uuid, $resource_uuid);
             } catch (\GuzzleHttp\Exception\RequestException $ex) {
                 drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
                 watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
