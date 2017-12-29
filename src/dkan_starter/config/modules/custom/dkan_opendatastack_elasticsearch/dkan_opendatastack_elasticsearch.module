@@ -142,10 +142,32 @@ function dkan_opendatastack_elasticsearch_node_delete($node) {
     $client = _dkan_opendatastack_elasticsearch_import_api_client();
 
     if ($node->type == 'dataset') {
-
+        _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $client);
     }
     elseif ($node->type == 'resource') {
         _dkan_opendatastack_elasticsearch_resource_delete($node, $client);
+    }
+}
+
+/**
+ *  Delete dataset indexes from Elasticsearch
+ */
+function _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $client) {
+    if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+        $dataset_uuid = (string) $node->uuid;
+        try {
+            $response = $client->deleteImportConfiguration($dataset_uuid);
+            $status = $response['log']['status'];
+            if ($status == 'success') {
+                drupal_set_message(t('The dataset @node_title is deleted from Elasticsearch.', array(
+                        '@node_title' => $node->title,
+                    )
+                ), 'status');
+            }
+        } catch (\GuzzleHttp\Exception\RequestException $ex) {
+            drupal_set_message(t('Failed deleting the dataset from ElasticSearch'), 'error');
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+        }
     }
 }
 
