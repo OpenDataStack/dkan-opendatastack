@@ -114,10 +114,10 @@ function _dkan_opendatastack_elasticsearch_import_api_client() {
 function _dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions) {
     $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION)); // Using strtolower to overcome case sensitive
     if (in_array($extension, $supported_extensions)) {
-        return true;
+        return TRUE;
     }
     else {
-        return false;
+        return FALSE;
     }
 }
 
