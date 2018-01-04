@@ -128,10 +128,74 @@ function dkan_opendatastack_elasticsearch_node_update($node) {
     $client = _dkan_opendatastack_elasticsearch_import_api_client();
 
     if ($node->type == 'dataset') {
-
+        _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client);
     }
     elseif ($node->type == 'resource') {
         _dkan_opendatastack_elasticsearch_request_import($node, $client);
+    }
+}
+
+/**
+ * Update dataset import configuration
+ */
+function _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client) {
+    $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
+    $dataset_uuid = $node->uuid;
+    $data = array(
+        'id' => $dataset_uuid,
+        'type' => 'opendatastack/csv-importer',
+    );
+    if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+        $resources_nids = array();
+        foreach ($node->field_resources[LANGUAGE_NONE] as $node_nid) {
+            $resources_nids[] = $node_nid['target_id'];
+        }
+        // get all resources nodes using their nids
+        $resources_node_list = node_load_multiple($resources_nids);
+        $resources = array();
+        $i = 0;
+        $supported_extensions = array(
+            'csv',
+        );
+        // get resource node uuid and uri
+        foreach ($resources_node_list as $key => $node) {
+            $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
+            if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
+                $resources['resources'][$i]['id'] = $node->uuid;
+                $resources['resources'][$i]['uri'] = $uri;
+            }
+            $i++;
+        }
+        $updated_configuration = array_merge($data, $elastic_schema, $resources);
+
+        try {
+            $response = $client->updateImportConfiguration($updated_configuration);
+            $status = $response['log']['status'];
+            if ($status == 'success') {
+                drupal_set_message(t('The resource @node_title is queued.', array(
+                        '@node_title' => $node->title,
+                    )
+                ), 'status');
+            }
+        } catch (\GuzzleHttp\Exception\RequestException $ex) {
+            drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+        }
+    }
+}
+
+/**
+ * Get resource uri from either remote file or local file
+ */
+function _dkan_opendatastack_elasticsearch_get_resource_uri($node) {
+    $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+    if (empty($remote_file)) {
+        $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
+        $file = file_load($fid);
+        return file_create_url($file->uri);
+    }
+    else {
+        return $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
     }
 }
 
