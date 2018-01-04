@@ -193,12 +193,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenDataStack/elasticsearch-import-api-client.git",
-                "reference": "a3a00a9f9a6f923577b9461e39f0a25f3149443b"
+                "reference": "a19bf4be7674f89654e714823646c693bc08553b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenDataStack/elasticsearch-import-api-client/zipball/a3a00a9f9a6f923577b9461e39f0a25f3149443b",
-                "reference": "a3a00a9f9a6f923577b9461e39f0a25f3149443b",
+                "url": "https://api.github.com/repos/OpenDataStack/elasticsearch-import-api-client/zipball/a19bf4be7674f89654e714823646c693bc08553b",
+                "reference": "a19bf4be7674f89654e714823646c693bc08553b",
                 "shasum": ""
             },
             "require": {
@@ -229,7 +229,7 @@
                 "elasticsearch",
                 "kibana"
             ],
-            "time": "2017-12-29T11:14:07+00:00"
+            "time": "2018-01-04T16:52:12+00:00"
         },
         {
             "name": "psr/http-message",
