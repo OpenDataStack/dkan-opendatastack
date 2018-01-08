@@ -25,20 +25,29 @@ function dkan_opendatastack_kibana_menu() {
  */
 function dkan_opendatastack_kibana_page_callback_kibana() {
   // Check if a user is logged in.
-  if (!user_is_logged_in()) {
-    $ssid = session_id();
-
-    // Anonymous, start a session if not done already.
-    if (empty($ssid)) {
-      drupal_session_start();
-      $_SESSION['nosave'] = TRUE;
+  if (empty($_COOKIE['Drupal_visitor_jwt'])) {
+    if (!user_is_logged_in()) {
       $ssid = session_id();
-    }
 
-    // We have a session, make sure the cookie is there.
-    if (empty($_COOKIE['Drupal_visitor_jwt'])) {
+      // Anonymous, start a session if not done already.
+      if (empty($ssid)) {
+        drupal_session_start();
+        $_SESSION['nosave'] = TRUE;
+        $ssid = session_id();
+      }
+
+      // We have a session, make sure the cookie is there.
       $claims = dkan_opendatastack_kibana_jwt_claims('anonymous', $ssid);
       $token = dkan_opendatastack_kibana_generate_jwt($claims);
+      user_cookie_save(array(
+        'jwt' => $token,
+      ));
+    }
+    else {
+      global $user;
+
+      $token = dkan_opendatastack_kibana_generate_jwt_from_account($user);
+
       user_cookie_save(array(
         'jwt' => $token,
       ));
@@ -48,7 +57,7 @@ function dkan_opendatastack_kibana_page_callback_kibana() {
   $markup_prefix = '<div class="kibana-container">';
   $markup_suffix = '</div>';
 
-  $src = variable_get('dkan_opendatastack_kibana_src', NULL);
+  $src = variable_get('dkan_opendatastack_kibana_src', getenv('DKAN_OPENDATASTACK_KIBANA_SRC'));
   if (!isset($src)) {
     $markup = '<p class="kibana-body text-center">' .
       t("Kibana backend URL missing.") .
@@ -70,13 +79,11 @@ function dkan_opendatastack_kibana_page_callback_kibana() {
 
 /**
  * Implements hook_user_login().
+ *
+ * Make sure we have a fresh token on user login.
  */
 function dkan_opendatastack_kibana_user_login(&$edit, $account) {
-  $token = dkan_opendatastack_kibana_generate_jwt_from_account($account);
-
-  user_cookie_save(array(
-    'jwt' => $token,
-  ));
+  user_cookie_delete('jwt');
 }
 
 /**
@@ -100,7 +107,7 @@ function dkan_opendatastack_kibana_jwt_claims($username, $id) {
  *
  */
 function dkan_opendatastack_kibana_generate_jwt(array $claims) {
-  $siging_key = variable_get('dkan_opendatastack_kibana_jwt_secret', NULL);
+  $siging_key = variable_get('dkan_opendatastack_kibana_jwt_secret', getenv('DKAN_OPENDATASTACK_KIBANA_JWT_SECRET'));
   $issuer = variable_get('dkan_opendatastack_kibana_jwt_issuer', 'dkan_opendatastack_kibana');
 
   try {
@@ -146,6 +153,6 @@ function dkan_opendatastack_kibana_generate_jwt(array $claims) {
  *
  */
 function dkan_opendatastack_kibana_generate_jwt_from_account($account) {
-  $claims = dkan_opendatastack_kibana_jwt_claims($account->username, $account->uid);
+  $claims = dkan_opendatastack_kibana_jwt_claims($account->name, $account->uid);
   return dkan_opendatastack_kibana_generate_jwt($claims);
 }
