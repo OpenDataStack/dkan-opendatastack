@@ -21,38 +21,68 @@ function dkan_opendatastack_kibana_menu() {
 }
 
 /**
+ * Implements hook_node_view_alter().
+ */
+function dkan_opendatastack_kibana_node_view_alter(&$build) {
+  if ($build['#bundle'] == 'resource') {
+    // Make sure the user have the jwt cookie set.
+    dkan_opendatastack_kibana_jwt_user_cookie_save();
+
+    $node_wrapper = entity_metadata_wrapper('node', $build['#node']);
+
+    if (isset($build['field_upload'])) {
+      $build['field_upload']['#access'] = FALSE;
+    }
+
+    $markup_prefix = '<div class="kibana-container">';
+    $markup_suffix = '</div>';
+    $markup = '';
+
+    $src = variable_get('dkan_opendatastack_kibana_src', getenv('DKAN_OPENDATASTACK_KIBANA_SRC'));
+    if (!isset($src)) {
+      $markup = '<p class="kibana-body text-center">' .
+        t("Kibana backend URL missing.") .
+        '</p>';
+    }
+    else {
+      // Construct the kibana index pattern using the "dkan-<dataset uuid>-*"
+      // convention.
+      $index_pattern = null;
+      foreach ($node_wrapper->field_dataset_ref->getIterator() as $delta => $dataset_ref) {
+        // Only get the uuid from the first dataset reference. Do not support n
+        // to n dataset to resource relationship.
+        if (!empty($index_pattern . $dataset_ref->uuid->value())) {
+          $index_pattern = 'dkan-' . $index_pattern . $dataset_ref->uuid->value() . '-*';
+          break;
+        }
+      }
+
+      if (empty($index_pattern)) {
+        $markup = '<p class="kibana-body text-center">' .
+          t("Failed to find the associated Kibana Index Pattern.") .
+          '</p>';
+      }
+      else {
+        $src = $src . "/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-5y,mode:quick,to:now))&_a=(columns:!(_source),index:'" . $index_pattern . "',interval:auto,query:(language:lucene,query:''),sort:!(date,desc))";
+        $markup = '<iframe src="' .
+          $src .
+          '" class="kibana-body" width="100%" height="800" frameborder="0" allowfullscreen/>';
+      }
+    }
+
+    $build['kibana'] = array(
+      '#type' => 'markup',
+      '#markup' => $markup_prefix . $markup . $markup_suffix,
+      '#weight' => $build['field_upload']['#weight'],
+    );
+  }
+}
+
+/**
  * Page callback for kibana menu item.
  */
 function dkan_opendatastack_kibana_page_callback_kibana() {
-  // Check if a user is logged in.
-  if (empty($_COOKIE['Drupal_visitor_jwt'])) {
-    if (!user_is_logged_in()) {
-      $ssid = session_id();
-
-      // Anonymous, start a session if not done already.
-      if (empty($ssid)) {
-        drupal_session_start();
-        $_SESSION['nosave'] = TRUE;
-        $ssid = session_id();
-      }
-
-      // We have a session, make sure the cookie is there.
-      $claims = dkan_opendatastack_kibana_jwt_claims('anonymous', $ssid);
-      $token = dkan_opendatastack_kibana_generate_jwt($claims);
-      user_cookie_save(array(
-        'jwt' => $token,
-      ));
-    }
-    else {
-      global $user;
-
-      $token = dkan_opendatastack_kibana_generate_jwt_from_account($user);
-
-      user_cookie_save(array(
-        'jwt' => $token,
-      ));
-    }
-  }
+  dkan_opendatastack_kibana_jwt_user_cookie_save();
 
   $markup_prefix = '<div class="kibana-container">';
   $markup_suffix = '</div>';
@@ -94,7 +124,42 @@ function dkan_opendatastack_kibana_user_logout($account) {
 }
 
 /**
- *
+ * Add JWT as a cookie to anonymous and registered users.
+ */
+function dkan_opendatastack_kibana_jwt_user_cookie_save() {
+  // Check if a user is logged in.
+  if (empty($_COOKIE['Drupal_visitor_jwt'])) {
+    if (!user_is_logged_in()) {
+      $ssid = session_id();
+
+      // Anonymous, start a session if not done already.
+      if (empty($ssid)) {
+        drupal_session_start();
+        $_SESSION['nosave'] = TRUE;
+        $ssid = session_id();
+      }
+
+      // We have a session, make sure the cookie is there.
+      $claims = dkan_opendatastack_kibana_jwt_claims('anonymous', $ssid);
+      $token = dkan_opendatastack_kibana_generate_jwt($claims);
+      user_cookie_save(array(
+        'jwt' => $token,
+      ));
+    }
+    else {
+      global $user;
+
+      $token = dkan_opendatastack_kibana_generate_jwt_from_account($user);
+
+      user_cookie_save(array(
+        'jwt' => $token,
+      ));
+    }
+  }
+}
+
+/**
+ * Generate JWT claims array from arguments.
  */
 function dkan_opendatastack_kibana_jwt_claims($username, $id) {
   // Elasticsearch >= 6.0 wont accept indexs with uppercase chars.
@@ -104,7 +169,7 @@ function dkan_opendatastack_kibana_jwt_claims($username, $id) {
 }
 
 /**
- *
+ * Generate JWT from generic claims.
  */
 function dkan_opendatastack_kibana_generate_jwt(array $claims) {
   $siging_key = variable_get('dkan_opendatastack_kibana_jwt_secret', getenv('DKAN_OPENDATASTACK_KIBANA_JWT_SECRET'));
@@ -150,7 +215,7 @@ function dkan_opendatastack_kibana_generate_jwt(array $claims) {
 }
 
 /**
- *
+ * Generate JWT from Drupal account fields.
  */
 function dkan_opendatastack_kibana_generate_jwt_from_account($account) {
   $claims = dkan_opendatastack_kibana_jwt_claims($account->name, $account->uid);
