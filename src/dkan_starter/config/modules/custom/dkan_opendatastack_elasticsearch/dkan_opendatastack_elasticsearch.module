@@ -36,16 +36,14 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
         // Add configuration
         try {
             $response = $client->addImportConfiguration($json_doc);
-            $status = $response['log']['status'];
-            if ($status == 'success') {
-                drupal_set_message(t('The dataset @node_title has a schema field. Its Status = @status', array(
-                        '@node_title' => $node->title, '@status' => $status,
-                    )
-                ), 'status');
-            }
+            watchdog('dkan_opendatastack_elasticsearch', "Import configuration sent for processing, return status is '@status'",
+              array('@status' => $status), WATCHDOG_INFO);
+            drupal_set_message(t('The dataset "@node_title" schema field submitted for processing with status "@status"',
+              array('@node_title' => $node->title, '@status' => $response['log']['status'],))
+              , 'status');
         } catch (\GuzzleHttp\Exception\RequestException $ex) {
             drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), WATCHDOG_ERROR);
         }
     }
 }
