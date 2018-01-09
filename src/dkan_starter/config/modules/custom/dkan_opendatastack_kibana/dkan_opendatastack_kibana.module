@@ -51,8 +51,8 @@ function dkan_opendatastack_kibana_node_view_alter(&$build) {
 
       // Only get the uuid from the first dataset reference. Do not support n
       // to n dataset to resource relationship.
-      $dataset_ref = $node_wrapper->field_dataset_ref[0];
-      if (!empty($index_pattern . $dataset_ref->uuid->value())) {
+      if (!empty($node_wrapper->field_dataset_ref[0])) {
+        $dataset_ref = $node_wrapper->field_dataset_ref[0];
         $index_pattern = 'dkan-' . $index_pattern . $dataset_ref->uuid->value() . '-*';
       }
 
