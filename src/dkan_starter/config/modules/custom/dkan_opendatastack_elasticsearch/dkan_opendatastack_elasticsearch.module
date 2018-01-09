@@ -37,7 +37,7 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
         try {
             $response = $client->addImportConfiguration($json_doc);
             watchdog('dkan_opendatastack_elasticsearch', "Import configuration sent for processing, return status is '@status'",
-              array('@status' => $status), WATCHDOG_INFO);
+              array('@status' => $response['log']['status']), WATCHDOG_INFO);
             drupal_set_message(t('The dataset "@node_title" schema field submitted for processing with status "@status"',
               array('@node_title' => $node->title, '@status' => $response['log']['status'],))
               , 'status');
@@ -237,23 +237,37 @@ function _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $c
  * Delete resource from index
  */
 function _dkan_opendatastack_elasticsearch_resource_delete($node, $client) {
-    $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-    $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
-    $resource_uuid = $node->uuid;
-    try {
-        // Delete the resource from fileSystem folder and from Elasticsearch
-        $response = $client->requestClear($dataset_uuid, $resource_uuid);
-        $status = $response['log']['status'];
-        if ($status == 'success') {
-            drupal_set_message(t('The resource @node_title is deleted.', array(
-                    '@node_title' => $node->title,
-                )
-            ), 'status');
-        }
-    } catch (\GuzzleHttp\Exception\RequestException $ex) {
-        drupal_set_message(t('Failed deleting the resource from ElasticSearch'), 'error');
-        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
-    }
+  $resource = entity_metadata_wrapper('node', $node);
+
+  // Skip if missing the parent dataset.
+  if (empty($resource->field_dataset_ref->value())) {
+    $message ='No parent dataset for resource [@nid]. No index to drop.';
+    drupal_set_message(t($message, array('@nid' => $resource->getIdentifier())), 'status');
+    watchdog('dkan_opendatastack_elasticsearch', $message, array('@nid' => $resource->getIdentifier()),
+      WATCHDOG_INFO);
+    return;
+  }
+
+  // Only get the uuid from the first dataset reference. Do not support n
+  // to n dataset to resource relationship.
+  $dataset_ref = $resource->field_dataset_ref[0];
+  $dataset_uuid = $dataset_ref->uuid->value();
+
+  $resource_uuid = $resource->uuid->value();
+
+  try {
+    // Delete the resource from fileSystem folder and from Elasticsearch
+    $response = $client->requestClear($dataset_uuid, $resource_uuid);
+    drupal_set_message(t('The resource @node_title index delete request sent, return status: "@status".',
+      array('@node_title' => $node->title, '@status' => $response['log']['status'],)),
+    'status');
+    watchdog('dkan_opendatastack_elasticsearch', 'The resource [@nid] index delete request sent, return status: "@status".',
+      array('@nid' => $node->nid, '@status' => $response['log']['status']),
+      WATCHDOG_INFO);
+  } catch (\GuzzleHttp\Exception\RequestException $ex) {
+    drupal_set_message(t('Failed deleting the resource from ElasticSearch'), 'error');
+    watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+  }
 }
 
 /**
@@ -297,7 +311,7 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
         $response = array();
 
         if ($node->type == 'dataset') {
-            $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($nid);
+            $dataset_uuid = $node->uuid;
 
             try {
                 $response = $client->statusConfiguration($dataset_uuid);
