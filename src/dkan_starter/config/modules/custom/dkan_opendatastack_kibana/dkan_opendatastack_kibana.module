@@ -48,13 +48,12 @@ function dkan_opendatastack_kibana_node_view_alter(&$build) {
       // Construct the kibana index pattern using the "dkan-<dataset uuid>-*"
       // convention.
       $index_pattern = null;
-      foreach ($node_wrapper->field_dataset_ref->getIterator() as $delta => $dataset_ref) {
-        // Only get the uuid from the first dataset reference. Do not support n
-        // to n dataset to resource relationship.
-        if (!empty($index_pattern . $dataset_ref->uuid->value())) {
-          $index_pattern = 'dkan-' . $index_pattern . $dataset_ref->uuid->value() . '-*';
-          break;
-        }
+
+      // Only get the uuid from the first dataset reference. Do not support n
+      // to n dataset to resource relationship.
+      $dataset_ref = $node_wrapper->field_dataset_ref[0];
+      if (!empty($index_pattern . $dataset_ref->uuid->value())) {
+        $index_pattern = 'dkan-' . $index_pattern . $dataset_ref->uuid->value() . '-*';
       }
 
       if (empty($index_pattern)) {
