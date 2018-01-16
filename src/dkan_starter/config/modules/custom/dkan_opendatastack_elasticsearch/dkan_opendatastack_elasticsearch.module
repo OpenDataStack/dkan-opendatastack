@@ -6,16 +6,15 @@ require 'vendor/autoload.php';
  * Implements hook_node_insert().
  */
 function dkan_opendatastack_elasticsearch_node_insert($node) {
-    // Create a new instance of the Client API
+  // Create a new instance of the Client API
   $client = _dkan_opendatastack_elasticsearch_import_api_client();
-
   if ($node->type == 'dataset') {
-      // Create a dataset index in Elasticsearch using the configuration mapping
-      _dkan_opendatastack_elasticsearch_add_import_configuration($node, $client);
+    // Create a dataset index in Elasticsearch using the configuration mapping
+    _dkan_opendatastack_elasticsearch_add_import_configuration($node, $client);
   }
   elseif ($node->type == 'resource') {
-      // Publish the resource to Elasticsearch under its current dataset(index)
-      _dkan_opendatastack_elasticsearch_request_import($node, $client);
+    // Publish the resource to Elasticsearch under its current dataset(index)
+    _dkan_opendatastack_elasticsearch_request_import($node, $client);
   }
 }
 
@@ -23,28 +22,27 @@ function dkan_opendatastack_elasticsearch_node_insert($node) {
  * Create a dataset index in Elasticsearch using the configuration mapping
  */
 function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $client) {
-    if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-        $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
-        $uuid = (string) $node->uuid;
-        $type = 'opendatastack/csv-importer';
-        $configuration_header = array(
-            'id' => $uuid,
-            'type' => $type,
-        );
-
-        $json_doc = array_merge($configuration_header, $elastic_schema);
-        // Add configuration
-        try {
-            $response = $client->addImportConfiguration($json_doc);
-            watchdog('dkan_opendatastack_elasticsearch', "Import configuration sent for processing, return status is '@status'",
-              array('@status' => $response['log']['status']), WATCHDOG_INFO);
-            drupal_set_message(t('The dataset "@node_title" schema field submitted for processing with status "@status"',
-              array('@node_title' => $node->title, '@status' => $response['log']['status'],))
-              , 'status');
-        } catch (\GuzzleHttp\Exception\RequestException $ex) {
-            drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), WATCHDOG_ERROR);
-        }
+  if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+    $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
+    $uuid = (string) $node->uuid;
+    $type = 'opendatastack/csv-importer';
+    $configuration_header = array(
+      'id' => $uuid,
+      'type' => $type,
+    );
+    $json_doc = array_merge($configuration_header, $elastic_schema);
+    // Add configuration
+    try {
+      $response = $client->addImportConfiguration($json_doc);
+      watchdog('dkan_opendatastack_elasticsearch', "Import configuration sent for processing, return status is '@status'",
+        array('@status' => $response['log']['status']), WATCHDOG_INFO);
+      drupal_set_message(t('The dataset "@node_title" schema field submitted for processing with status "@status"',
+        array('@node_title' => $node->title, '@status' => $response['log']['status'], ))
+        , 'status');
+      } catch (\GuzzleHttp\Exception\RequestException $ex) {
+      drupal_set_message(t('Failed to add mapping to the dataset'), 'error');
+      watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), WATCHDOG_ERROR);
+      }
     }
 }
 
@@ -52,39 +50,38 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
  * Publish the resource to Elasticsearch under its current dataset(index)
  */
 function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
-    // load dataset node by nid
-    $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-    $dataset_node = node_load($dataset_nid);
-    if (!empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-        $resource_uuid = $node->uuid;
-        $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
-        // Prepare the data to send
-        $data = array(
-            "udid" => $dataset_node->uuid,
-            "id" => $resource_uuid,
-            "type" => "opendatastack/csv-importer",
-            "url" => $uri
-        );
-
-        $supported_extensions = array(
-            'csv',
-        );
-        // Only files with supported extensions will be published to ElasticSearch
-        if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
-            try {
-                $response = $client->requestImport($data);
-                $status = $response['log']['status'];
-                if ($status == 'success') {
-                    drupal_set_message(t('The resource @node_title is queued.', array(
-                            '@node_title' => $node->title,
-                        )
-                    ), 'status');
-                }
-            } catch (\GuzzleHttp\Exception\RequestException $ex) {
-                drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
-                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
-            }
+  // load dataset node by nid
+  $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+  $dataset_node = node_load($dataset_nid);
+  if (!empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+    $resource_uuid = $node->uuid;
+    $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
+    // Prepare the data to send
+    $data = array(
+      "udid" => $dataset_node->uuid,
+      "id" => $resource_uuid,
+      "type" => "opendatastack/csv-importer",
+      "url" => $uri
+    );
+    $supported_extensions = array(
+      'csv',
+    );
+    // Only files with supported extensions will be published to ElasticSearch
+    if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
+      try {
+        $response = $client->requestImport($data);
+        $status = $response['log']['status'];
+        if ($status == 'success') {
+          drupal_set_message(t('The resource @node_title is queued.', array(
+            '@node_title' => $node->title,
+            )
+          ), 'status');
         }
+      } catch (\GuzzleHttp\Exception\RequestException $ex) {
+        drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+        }
+      }
     }
 }
 
@@ -92,139 +89,135 @@ function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
  * Create a new instance of the Client API
  */
 function _dkan_opendatastack_elasticsearch_import_api_client() {
-    $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_api_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_HOST'));
-    $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
-
-    return new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
+  $elasticsearch_host = variable_get('dkan_opendatastack_elasticsearch_api_host', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_HOST'));
+  $api_key = variable_get('dkan_opendatastack_elasticsearch_api_key', getenv('DKAN_OPENDATASTACK_ELASTICSEARCH_API_KEY'));
+  return new \OpenDataStack\Client\ElasticSearchImportClient($elasticsearch_host, $api_key);
 }
 
 /**
  * Check allowed extensions
  */
 function _dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions) {
-    $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION)); // Using strtolower to overcome case sensitive
-    if (in_array($extension, $supported_extensions)) {
-        return TRUE;
-    }
-    else {
-        return FALSE;
-    }
+  $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION)); // Using strtolower to overcome case sensitive
+  if (in_array($extension, $supported_extensions)) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
 }
 
 /**
  * Implements hook_node_update().
  */
 function dkan_opendatastack_elasticsearch_node_update($node) {
-    $client = _dkan_opendatastack_elasticsearch_import_api_client();
-
-    if ($node->type == 'dataset' && $node->field_elastic_schema[LANGUAGE_NONE][0]['value'] !== $node->original->field_elastic_schema[LANGUAGE_NONE][0]['value']) {
-        _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client);
-    }
-    elseif ($node->type == 'resource' &&
-        _dkan_opendatastack_elasticsearch_get_resource_uri($node) !== _dkan_opendatastack_elasticsearch_get_resource_uri($node->original)) {
-        _dkan_opendatastack_elasticsearch_request_import($node, $client);
-    }
+  $client = _dkan_opendatastack_elasticsearch_import_api_client();
+  if ($node->type == 'dataset' && $node->field_elastic_schema[LANGUAGE_NONE][0]['value'] !== $node->original->field_elastic_schema[LANGUAGE_NONE][0]['value']) {
+    _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client);
+  }
+  elseif ($node->type == 'resource' &&
+    _dkan_opendatastack_elasticsearch_get_resource_uri($node) !== _dkan_opendatastack_elasticsearch_get_resource_uri($node->original)) {
+    _dkan_opendatastack_elasticsearch_request_import($node, $client);
+  }
 }
 
 /**
  * Update dataset import configuration
  */
 function _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client) {
-    $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
-    $dataset_uuid = $node->uuid;
-    $dataset_title = $node->title;
-    $data = array(
-        'id' => $dataset_uuid,
-        'type' => 'opendatastack/csv-importer',
-    );
-    if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-        $resources_nids = array();
-        foreach ($node->field_resources[LANGUAGE_NONE] as $node_nid) {
-            $resources_nids[] = $node_nid['target_id'];
-        }
-        // get all resources nodes using their nids
-        $resources_node_list = node_load_multiple($resources_nids);
-        $resources = array();
-        $i = 0;
-        $supported_extensions = array(
-            'csv',
-        );
-        // get resource node uuid and uri
-        foreach ($resources_node_list as $key => $node) {
-            $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
-            if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
-                $resources['resources'][$i]['id'] = $node->uuid;
-                $resources['resources'][$i]['uri'] = $uri;
-            }
-            $i++;
-        }
-        $updated_configuration = array_merge($data, $elastic_schema, $resources);
-
-        try {
-            $response = $client->updateImportConfiguration($updated_configuration);
-            $status = $response['log']['status'];
-            if ($status == 'success') {
-                drupal_set_message(t('The dataset @dataset_title and its resources has been updated and published to ElasticSearch.', array(
-                        '@dataset_title' => $dataset_title,
-                    )
-                ), 'status');
-            }
-        } catch (\GuzzleHttp\Exception\RequestException $ex) {
-            drupal_set_message(t('Failed updating the dataset mapping'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
-        }
+  $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
+  $dataset_uuid = $node->uuid;
+  $dataset_title = $node->title;
+  $data = array(
+    'id' => $dataset_uuid,
+    'type' => 'opendatastack/csv-importer',
+  );
+  if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+    $resources_nids = array();
+    foreach ($node->field_resources[LANGUAGE_NONE] as $node_nid) {
+      $resources_nids[] = $node_nid['target_id'];
     }
+    // get all resources nodes using their nids
+    $resources_node_list = node_load_multiple($resources_nids);
+    $resources = array();
+    $i = 0;
+    $supported_extensions = array(
+      'csv',
+    );
+    // get resource node uuid and uri
+    foreach ($resources_node_list as $key => $node) {
+      $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
+      if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
+        $resources['resources'][$i]['id'] = $node->uuid;
+        $resources['resources'][$i]['uri'] = $uri;
+      }
+      $i++;
+    }
+    $updated_configuration = array_merge($data, $elastic_schema, $resources);
+    try {
+      $response = $client->updateImportConfiguration($updated_configuration);
+      $status = $response['log']['status'];
+      if ($status == 'success') {
+        drupal_set_message(t('The dataset @dataset_title and its resources has been updated and published to ElasticSearch.', array(
+          '@dataset_title' => $dataset_title,
+          )
+        ), 'status');
+      }
+    } catch (\GuzzleHttp\Exception\RequestException $ex) {
+      drupal_set_message(t('Failed updating the dataset mapping'), 'error');
+      watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+    }
+  }
 }
 
 /**
  * Get resource uri from either remote file or local file
  */
 function _dkan_opendatastack_elasticsearch_get_resource_uri($node) {
-    $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
-    if (empty($remote_file)) {
-        $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
-        $file = file_load($fid);
-        return file_create_url($file->uri);
-    }
-    else {
-        return $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
-    }
+  $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+  if (empty($remote_file)) {
+    $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
+    $file = file_load($fid);
+    return file_create_url($file->uri);
+  }
+  else {
+    return $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+  }
 }
 
 /**
  * Implements hook_node_delete().
  */
 function dkan_opendatastack_elasticsearch_node_delete($node) {
-    $client = _dkan_opendatastack_elasticsearch_import_api_client();
-
-    if ($node->type == 'dataset') {
-        _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $client);
-    }
-    elseif ($node->type == 'resource') {
-        _dkan_opendatastack_elasticsearch_resource_delete($node, $client);
-    }
+  $client = _dkan_opendatastack_elasticsearch_import_api_client();
+  if ($node->type == 'dataset') {
+    _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $client);
+  }
+  elseif ($node->type == 'resource') {
+    _dkan_opendatastack_elasticsearch_resource_delete($node, $client);
+  }
 }
 
 /**
  *  Delete dataset indexes from Elasticsearch
  */
 function _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $client) {
-    if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-        $dataset_uuid = (string) $node->uuid;
-        try {
-            $response = $client->deleteImportConfiguration($dataset_uuid);
-            $status = $response['log']['status'];
-            if ($status == 'success') {
-                drupal_set_message(t('The dataset @node_title is deleted from Elasticsearch.', array(
-                        '@node_title' => $node->title,
-                    )
-                ), 'status');
-            }
-        } catch (\GuzzleHttp\Exception\RequestException $ex) {
-            drupal_set_message(t('Failed deleting the dataset from ElasticSearch'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
-        }
+  if (!empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+    $dataset_uuid = (string) $node->uuid;
+    try {
+      $response = $client->deleteImportConfiguration($dataset_uuid);
+      $status = $response['log']['status'];
+      if ($status == 'success') {
+        drupal_set_message(t('The dataset @node_title is deleted from Elasticsearch.', array(
+          '@node_title' => $node->title,
+          )
+        ), 'status');
+      }
+    } catch (\GuzzleHttp\Exception\RequestException $ex) {
+      drupal_set_message(t('Failed deleting the dataset from ElasticSearch'), 'error');
+      watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
     }
+  }
 }
 
 /**
@@ -232,7 +225,6 @@ function _dkan_opendatastack_elasticsearch_delete_import_configuration($node, $c
  */
 function _dkan_opendatastack_elasticsearch_resource_delete($node, $client) {
   $resource = entity_metadata_wrapper('node', $node);
-
   // Skip if missing the parent dataset.
   if (empty($resource->field_dataset_ref->value())) {
     $message ='No parent dataset for resource [@nid]. No index to drop.';
@@ -241,19 +233,15 @@ function _dkan_opendatastack_elasticsearch_resource_delete($node, $client) {
       WATCHDOG_INFO);
     return;
   }
-
-  // Only get the uuid from the first dataset reference. Do not support n
-  // to n dataset to resource relationship.
+  // Only get the uuid from the first dataset reference. Does not support n to n dataset to resource relationship.
   $dataset_ref = $resource->field_dataset_ref[0];
   $dataset_uuid = $dataset_ref->uuid->value();
-
   $resource_uuid = $resource->uuid->value();
-
   try {
     // Delete the resource from fileSystem folder and from Elasticsearch
     $response = $client->requestClear($dataset_uuid, $resource_uuid);
     drupal_set_message(t('The resource @node_title index delete request sent, return status: "@status".',
-      array('@node_title' => $node->title, '@status' => $response['log']['status'],)),
+      array('@node_title' => $node->title, '@status' => $response['log']['status'], )),
     'status');
     watchdog('dkan_opendatastack_elasticsearch', 'The resource [@nid] index delete request sent, return status: "@status".',
       array('@nid' => $node->nid, '@status' => $response['log']['status']),
@@ -268,187 +256,182 @@ function _dkan_opendatastack_elasticsearch_resource_delete($node, $client) {
  * Implements hook_permission().
  */
 function dkan_opendatastack_elasticsearch_permission() {
-    return array(
-        "administer logstash" => array(
-            "title" => t('Administer logstash'),
-            "description" => t("Perform administrative tasks on logstash functionnality"),
-        ),
-    );
+  return array(
+    "administer logstash" => array(
+      "title" => t('Administer logstash'),
+      "description" => t("Perform administrative tasks on logstash functionnality"),
+    ),
+  );
 }
 
 /**
  * Implements hook_menu().
  */
 function dkan_opendatastack_elasticsearch_menu() {
-    $items = array();
-    $items['node/%/elasticsearchlogs'] = array(
-        'title' => 'Elasticsearch status',
-        'description' => 'Display ElasticSearch logs.',
-        'page callback' => 'dkan_opendatastack_elasticsearch_log_page',
-        'page arguments' => [1],
-        'access callback' => 'dkan_opendatastack_elasticsearch_log_access',
-        'access arguments' => [1],
-        'type' => MENU_LOCAL_TASK,
-        'weight' => 100,
-    );
-
-    return $items;
+  $items = array();
+  $items['node/%/elasticsearchlogs'] = array(
+    'title' => 'Elasticsearch status',
+    'description' => 'Display ElasticSearch logs.',
+    'page callback' => 'dkan_opendatastack_elasticsearch_log_page',
+    'page arguments' => [1],
+    'access callback' => 'dkan_opendatastack_elasticsearch_log_access',
+    'access arguments' => [1],
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 100,
+  );
+  return $items;
 }
 
 /**
  * Callback for 'node/%/elasticsearchlogs'.
  */
 function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
-    $node = node_load($nid);
-    if (!empty($node)) {
-        $client = _dkan_opendatastack_elasticsearch_import_api_client();
-        $response = array();
-
-        // check if dataset has a schema
-        if ($node->type == 'dataset' && !empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-            $dataset_uuid = $node->uuid;
-
-            try {
-                $response = $client->statusConfiguration($dataset_uuid);
-            } catch (\GuzzleHttp\Exception\RequestException $ex) {
-                drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
-                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
-            }
-            return $response;
-        } else {
-            $item['message'] = array(
-                '#type' => 'markup',
-                '#markup' => '<h4><b>OOPS! Dataset <i>' . $node->title. '</i> is not recognized by ElasticSearch</b></h4>',
-            );
-            return $item;
-        }
-        $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
-        $allowed_extensions = _dkan_opendatastack_elasticsearch_allowed_extensions($uri, array('csv'));
-        $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-        $dataset_node = node_load($dataset_nid);
-        if ($node->type == 'resource' && $allowed_extensions && !empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-            $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-            $resource_uuid = $node->uuid;
-
-            try {
-                $response = $client->statusResource($dataset_node->uuid, $resource_uuid);
-            } catch (\GuzzleHttp\Exception\RequestException $ex) {
-                drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
-                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
-            }
-            return $response;
-        } else {
-            $item['message'] = array(
-                '#type' => 'markup',
-                '#markup' => '<h4><b>OOPS! Resource <i>' . $node->title. '</i> is not recognized by ElasticSearch</b></h4>',
-            );
-            return $item;
-        }
+  $node = node_load($nid);
+  if (!empty($node)) {
+    $client = _dkan_opendatastack_elasticsearch_import_api_client();
+    $response = array();
+    // check if dataset has a schema
+    if ($node->type == 'dataset' && !empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+      $dataset_uuid = $node->uuid;
+      try {
+        $response = $client->statusConfiguration($dataset_uuid);
+      } catch (\GuzzleHttp\Exception\RequestException $ex) {
+        drupal_set_message(t('Failed get the dataset status from ElasticSearch'), 'error');
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+      }
+      return $response;
     }
+    else {
+      $item['message'] = array(
+        '#type' => 'markup',
+        '#markup' => '<h4><b>OOPS! Dataset <i>' . $node->title . '</i> is not recognized by ElasticSearch</b></h4>',
+      );
+      return $item;
+    }
+    $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
+    $allowed_extensions = _dkan_opendatastack_elasticsearch_allowed_extensions($uri, array('csv'));
+    $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+    $dataset_node = node_load($dataset_nid);
+    if ($node->type == 'resource' && $allowed_extensions && !empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+      $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+      $resource_uuid = $node->uuid;
+      try {
+        $response = $client->statusResource($dataset_node->uuid, $resource_uuid);
+      } catch (\GuzzleHttp\Exception\RequestException $ex) {
+        drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
+        watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
+      }
+      return $response;
+    }
+    else {
+      $item['message'] = array(
+        '#type' => 'markup',
+        '#markup' => '<h4><b>OOPS! Resource <i>' . $node->title . '</i> is not recognized by ElasticSearch</b></h4>',
+      );
+      return $item;
+    }
+  }
 }
 
 /**
  * Get current node uuid
  */
 function _dkan_opendatastack_elasticsearch_get_node_uuid($nid) {
-    $result = db_select('node', 'n')
-        ->fields('n', array('uuid'))
-        ->condition('n.nid', $nid)
-        ->range(0, 1)
-        ->execute()
-        ->fetchAssoc();
-
-    return $result['uuid'];
+  $result = db_select('node', 'n')
+    ->fields('n', array('uuid'))
+    ->condition('n.nid', $nid)
+    ->range(0, 1)
+    ->execute()
+    ->fetchAssoc();
+  return $result['uuid'];
 }
 
 /**
  * Access callback function for "Add dataset" and "Add resource" menu tab.
  */
 function dkan_opendatastack_elasticsearch_log_access($nid) {
-    $types_allowed = array(
-        'dataset',
-        'resource',
-    );
-
-    $node = node_load($nid);
-
-    if (!empty($node)) {
-        return in_array($node->type, $types_allowed);
-    }
-    // Default behaviour: hide the menu.
-    return FALSE;
+  $types_allowed = array(
+    'dataset',
+    'resource',
+  );
+  $node = node_load($nid);
+  if (!empty($node)) {
+    return in_array($node->type, $types_allowed);
+  }
+  // Default behaviour: hide the menu.
+  return FALSE;
 }
 
 /**
  * Implements hook_field_default_field_bases_alter().
  */
 function dkan_dataset_content_types_field_default_field_bases_alter(&$field_bases) {
-    if (!isset($field_bases['field_elastic_schema'])) {
-        // Exported field_base: 'field_elastic_schema'.
-        $field_bases['field_elastic_schema'] = array(
-            'active' => 1,
-            'cardinality' => 1,
-            'deleted' => 0,
-            'entity_types' => array(),
-            'field_name' => 'field_elastic_schema',
-            'indexes' => array(),
-            'locked' => 0,
-            'module' => 'jsonb',
-            'settings' => array(),
-            'translatable' => 0,
-            'type' => 'jsonb',
-        );
-    }
+  if (!isset($field_bases['field_elastic_schema'])) {
+    // Exported field_base: 'field_elastic_schema'.
+    $field_bases['field_elastic_schema'] = array(
+      'active' => 1,
+      'cardinality' => 1,
+      'deleted' => 0,
+      'entity_types' => array(),
+      'field_name' => 'field_elastic_schema',
+      'indexes' => array(),
+      'locked' => 0,
+      'module' => 'jsonb',
+      'settings' => array(),
+      'translatable' => 0,
+      'type' => 'jsonb',
+    );
+  }
 }
 
 /**
  * Implements hook_field_default_field_instances_alter().
  */
 function dkan_dataset_content_types_field_default_field_instances_alter(&$field_instances) {
-    if (!isset($field_instances['node-dataset-field_elastic_schema'])) {
-        // Exported field_instance: 'node-dataset-field_elastic_schema'.
-        $field_instances['node-dataset-field_elastic_schema'] = array(
-            'bundle' => 'dataset',
-            'default_value' => NULL,
-            'deleted' => 0,
-            'description' => '',
-            'display' => array(
-                'default' => array(
-                    'label' => 'above',
-                    'module' => 'jsonb',
-                    'settings' => array(),
-                    'type' => 'jsonb_text',
-                    'weight' => 27,
-                ),
-                'search_result' => array(
-                    'label' => 'above',
-                    'settings' => array(),
-                    'type' => 'hidden',
-                    'weight' => 0,
-                ),
-                'teaser' => array(
-                    'label' => 'above',
-                    'settings' => array(),
-                    'type' => 'hidden',
-                    'weight' => 0,
-                ),
-            ),
-            'entity_type' => 'node',
-            'field_name' => 'field_elastic_schema',
-            'label' => 'Elastic Schema',
-            'required' => 0,
-            'settings' => array(
-                'user_register_form' => FALSE,
-            ),
-            'widget' => array(
-                'active' => 1,
-                'module' => 'jsonb',
-                'settings' => array(
-                    'ui_edit' => 'allow',
-                ),
-                'type' => 'jsonb_textarea',
-                'weight' => 33,
-            ),
-        );
-    }
+  if (!isset($field_instances['node-dataset-field_elastic_schema'])) {
+    // Exported field_instance: 'node-dataset-field_elastic_schema'.
+    $field_instances['node-dataset-field_elastic_schema'] = array(
+      'bundle' => 'dataset',
+      'default_value' => NULL,
+      'deleted' => 0,
+      'description' => '',
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'module' => 'jsonb',
+          'settings' => array(),
+          'type' => 'jsonb_text',
+          'weight' => 27,
+        ),
+        'search_result' => array(
+          'label' => 'above',
+          'settings' => array(),
+          'type' => 'hidden',
+          'weight' => 0,
+        ),
+        'teaser' => array(
+          'label' => 'above',
+          'settings' => array(),
+          'type' => 'hidden',
+          'weight' => 0,
+        ),
+      ),
+      'entity_type' => 'node',
+      'field_name' => 'field_elastic_schema',
+      'label' => 'Elastic Schema',
+      'required' => 0,
+      'settings' => array(
+        'user_register_form' => FALSE,
+      ),
+      'widget' => array(
+        'active' => 1,
+        'module' => 'jsonb',
+        'settings' => array(
+          'ui_edit' => 'allow',
+        ),
+        'type' => 'jsonb_textarea',
+        'weight' => 33,
+      ),
+    );
+  }
 }
