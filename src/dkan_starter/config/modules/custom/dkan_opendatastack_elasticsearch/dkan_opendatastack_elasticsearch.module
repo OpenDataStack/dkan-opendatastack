@@ -132,6 +132,7 @@ function dkan_opendatastack_elasticsearch_node_update($node) {
 function _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client) {
     $elastic_schema = json_decode($node->field_elastic_schema[LANGUAGE_NONE][0]['value'], TRUE);
     $dataset_uuid = $node->uuid;
+    $dataset_title = $node->title;
     $data = array(
         'id' => $dataset_uuid,
         'type' => 'opendatastack/csv-importer',
@@ -163,13 +164,13 @@ function _dkan_opendatastack_elasticsearch_update_import_configuration($node, $c
             $response = $client->updateImportConfiguration($updated_configuration);
             $status = $response['log']['status'];
             if ($status == 'success') {
-                drupal_set_message(t('The resource @node_title is queued.', array(
-                        '@node_title' => $node->title,
+                drupal_set_message(t('The dataset @dataset_title and its resources has been updated and published to ElasticSearch.', array(
+                        '@dataset_title' => $dataset_title,
                     )
                 ), 'status');
             }
         } catch (\GuzzleHttp\Exception\RequestException $ex) {
-            drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
+            drupal_set_message(t('Failed updating the dataset mapping'), 'error');
             watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
         }
     }
