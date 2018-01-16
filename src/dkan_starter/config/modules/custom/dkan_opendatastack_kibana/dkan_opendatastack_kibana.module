@@ -24,62 +24,62 @@ function dkan_opendatastack_kibana_menu() {
  * Implements hook_node_view_alter().
  */
 function dkan_opendatastack_kibana_node_view_alter(&$build) {
-      $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($build['#node']);
-      $allowed_extensions = _dkan_opendatastack_elasticsearch_allowed_extensions($uri, array('csv'));
-      $dataset_nid = (int)$build['#node']->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-      $dataset_node = node_load($dataset_nid);
+  $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($build['#node']);
+  $allowed_extensions = _dkan_opendatastack_elasticsearch_allowed_extensions($uri, array('csv'));
+  $dataset_nid = (int)$build['#node']->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+  $dataset_node = node_load($dataset_nid);
 
-      if ($build['#bundle'] == 'resource' && $allowed_extensions && !empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
-          // Make sure the user have the jwt cookie set.
-          dkan_opendatastack_kibana_jwt_user_cookie_save();
+  if ($build['#bundle'] == 'resource' && $allowed_extensions && !empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+    // Make sure the user have the jwt cookie set.
+    dkan_opendatastack_kibana_jwt_user_cookie_save();
 
-          $node_wrapper = entity_metadata_wrapper('node', $build['#node']);
+    $node_wrapper = entity_metadata_wrapper('node', $build['#node']);
 
-          if (isset($build['field_upload'])) {
-              $build['field_upload']['#access'] = FALSE;
-          }
+    if (isset($build['field_upload'])) {
+        $build['field_upload']['#access'] = FALSE;
+    }
 
-          $markup_prefix = '<div class="kibana-container">';
-          $markup_suffix = '</div>';
-          $markup = '';
+    $markup_prefix = '<div class="kibana-container">';
+    $markup_suffix = '</div>';
+    $markup = '';
 
-          $src = variable_get('dkan_opendatastack_kibana_src', getenv('DKAN_OPENDATASTACK_KIBANA_SRC'));
-          if (!isset($src)) {
-              $markup = '<p class="kibana-body text-center">' .
-                  t("Kibana backend URL missing.") .
-                  '</p>';
-          }
-          else {
-              // Construct the kibana index pattern using the "dkan-<dataset uuid>-*"
-              // convention.
-              $index_pattern = null;
+    $src = variable_get('dkan_opendatastack_kibana_src', getenv('DKAN_OPENDATASTACK_KIBANA_SRC'));
+    if (!isset($src)) {
+      $markup = '<p class="kibana-body text-center">' .
+        t("Kibana backend URL missing.") .
+        '</p>';
+    }
+    else {
+      // Construct the kibana index pattern using the "dkan-<dataset uuid>-*"
+      // convention.
+      $index_pattern = NULL;
 
-              // Only get the uuid from the first dataset reference. Do not support n
-              // to n dataset to resource relationship.
-              if (!empty($node_wrapper->field_dataset_ref[0])) {
-                  $dataset_ref = $node_wrapper->field_dataset_ref[0];
-                  $index_pattern = 'dkan-' . $index_pattern . $dataset_ref->uuid->value() . '-*';
-              }
-
-              if (empty($index_pattern)) {
-                  $markup = '<p class="kibana-body text-center">' .
-                      t("Failed to find the associated Kibana Index Pattern.") .
-                      '</p>';
-              }
-              else {
-                  $src = $src . "/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-5y,mode:quick,to:now))&_a=(columns:!(_source),index:'" . $index_pattern . "',interval:auto,query:(language:lucene,query:''),sort:!(date,desc))";
-                  $markup = '<iframe src="' .
-                      $src .
-                      '" class="kibana-body" width="100%" height="800" frameborder="0" allowfullscreen/>';
-              }
-          }
-
-          $build['kibana'] = array(
-              '#type' => 'markup',
-              '#markup' => $markup_prefix . $markup . $markup_suffix,
-              '#weight' => $build['field_upload']['#weight'],
-          );
+      // Only get the uuid from the first dataset reference. Do not support n
+      // to n dataset to resource relationship.
+      if (!empty($node_wrapper->field_dataset_ref[0])) {
+        $dataset_ref = $node_wrapper->field_dataset_ref[0];
+        $index_pattern = 'dkan-' . $index_pattern . $dataset_ref->uuid->value() . '-*';
       }
+
+      if (empty($index_pattern)) {
+        $markup = '<p class="kibana-body text-center">' .
+            t("Failed to find the associated Kibana Index Pattern.") .
+            '</p>';
+      }
+      else {
+        $src = $src . "/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-5y,mode:quick,to:now))&_a=(columns:!(_source),index:'" . $index_pattern . "',interval:auto,query:(language:lucene,query:''),sort:!(date,desc))";
+        $markup = '<iframe src="' .
+          $src .
+          '" class="kibana-body" width="100%" height="800" frameborder="0" allowfullscreen/>';
+      }
+    }
+
+    $build['kibana'] = array(
+      '#type' => 'markup',
+      '#markup' => $markup_prefix . $markup . $markup_suffix,
+      '#weight' => $build['field_upload']['#weight'],
+    );
+  }
 }
 
 /**
