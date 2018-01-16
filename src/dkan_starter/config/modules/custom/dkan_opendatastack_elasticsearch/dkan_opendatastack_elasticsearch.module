@@ -52,46 +52,38 @@ function _dkan_opendatastack_elasticsearch_add_import_configuration($node, $clie
  * Publish the resource to Elasticsearch under its current dataset(index)
  */
 function _dkan_opendatastack_elasticsearch_request_import($node, $client) {
-    // Get the current dataset and resource uuid values
+    // load dataset node by nid
     $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-    $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
-    $resource_uuid = $node->uuid;
-    $remote_file = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
+    $dataset_node = node_load($dataset_nid);
+    if (!empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
+        $resource_uuid = $node->uuid;
+        $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
+        // Prepare the data to send
+        $data = array(
+            "udid" => $dataset_node->uuid,
+            "id" => $resource_uuid,
+            "type" => "opendatastack/csv-importer",
+            "url" => $uri
+        );
 
-    if (empty($remote_file)) {
-        $fid = (int)$node->field_upload[LANGUAGE_NONE][0]['fid'];
-        $file = file_load($fid);
-        $uri = file_create_url($file->uri);
-    }
-    else {
-        $uri = $node->field_link_remote_file[LANGUAGE_NONE][0][filefield_dkan_remotefile][url];
-    }
-
-    // Prepare the data to send
-    $data = array(
-        "udid" => $dataset_uuid,
-        "id" => $resource_uuid,
-        "type" => "opendatastack/csv-importer",
-        "url" => $uri
-    );
-
-    $supported_extensions = array(
-        'csv',
-    );
-    // Only files with supported extensions will be published to ElasticSearch
-    if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
-        try {
-            $response = $client->requestImport($data);
-            $status = $response['log']['status'];
-            if ($status == 'success') {
-                drupal_set_message(t('The resource @node_title is queued.', array(
-                        '@node_title' => $node->title,
-                    )
-                ), 'status');
+        $supported_extensions = array(
+            'csv',
+        );
+        // Only files with supported extensions will be published to ElasticSearch
+        if (_dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_extensions)) {
+            try {
+                $response = $client->requestImport($data);
+                $status = $response['log']['status'];
+                if ($status == 'success') {
+                    drupal_set_message(t('The resource @node_title is queued.', array(
+                            '@node_title' => $node->title,
+                        )
+                    ), 'status');
+                }
+            } catch (\GuzzleHttp\Exception\RequestException $ex) {
+                drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
+                watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
             }
-        } catch (\GuzzleHttp\Exception\RequestException $ex) {
-            drupal_set_message(t('Failed publishing resource to ElasticSearch'), 'error');
-            watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
         }
     }
 }
@@ -125,10 +117,11 @@ function _dkan_opendatastack_elasticsearch_allowed_extensions($uri, $supported_e
 function dkan_opendatastack_elasticsearch_node_update($node) {
     $client = _dkan_opendatastack_elasticsearch_import_api_client();
 
-    if ($node->type == 'dataset') {
+    if ($node->type == 'dataset' && $node->field_elastic_schema[LANGUAGE_NONE][0]['value'] !== $node->original->field_elastic_schema[LANGUAGE_NONE][0]['value']) {
         _dkan_opendatastack_elasticsearch_update_import_configuration($node, $client);
     }
-    elseif ($node->type == 'resource') {
+    elseif ($node->type == 'resource' &&
+        _dkan_opendatastack_elasticsearch_get_resource_uri($node) !== _dkan_opendatastack_elasticsearch_get_resource_uri($node->original)) {
         _dkan_opendatastack_elasticsearch_request_import($node, $client);
     }
 }
