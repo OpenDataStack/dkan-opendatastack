@@ -2,3 +2,4 @@ name = JWT module for DKAN
 description = Support JWT for DKAN.
 package = DKAN
 core = 7.x
+dependencies[] = dkan_opendatastack_elasticsearch
