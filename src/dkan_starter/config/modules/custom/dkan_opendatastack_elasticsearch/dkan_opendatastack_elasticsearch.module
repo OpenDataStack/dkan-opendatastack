@@ -304,7 +304,8 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
         $client = _dkan_opendatastack_elasticsearch_import_api_client();
         $response = array();
 
-        if ($node->type == 'dataset') {
+        // check if dataset has a schema
+        if ($node->type == 'dataset' && !empty($node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
             $dataset_uuid = $node->uuid;
 
             try {
@@ -314,23 +315,35 @@ function dkan_opendatastack_elasticsearch_log_page($nid = NULL) {
                 watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
             }
             return $response;
+        } else {
+            $item['message'] = array(
+                '#type' => 'markup',
+                '#markup' => '<h4><b>OOPS! Dataset <i>' . $node->title. '</i> is not recognized by ElasticSearch</b></h4>',
+            );
+            return $item;
         }
-        elseif ($node->type == 'resource') {
+        $uri = _dkan_opendatastack_elasticsearch_get_resource_uri($node);
+        $allowed_extensions = _dkan_opendatastack_elasticsearch_allowed_extensions($uri, array('csv'));
+        $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
+        $dataset_node = node_load($dataset_nid);
+        if ($node->type == 'resource' && $allowed_extensions && !empty($dataset_node->field_elastic_schema[LANGUAGE_NONE][0]['value'])) {
             $dataset_nid = (int)$node->field_dataset_ref[LANGUAGE_NONE][0]['target_id'];
-            $dataset_uuid = _dkan_opendatastack_elasticsearch_get_node_uuid($dataset_nid);
             $resource_uuid = $node->uuid;
 
             try {
-                $response = $client->statusResource($dataset_uuid, $resource_uuid);
+                $response = $client->statusResource($dataset_node->uuid, $resource_uuid);
             } catch (\GuzzleHttp\Exception\RequestException $ex) {
                 drupal_set_message(t('Failed get the resource status from ElasticSearch'), 'error');
                 watchdog('dkan_opendatastack_elasticsearch', $ex->getMessage(), array(), 3);
             }
             return $response;
+        } else {
+            $item['message'] = array(
+                '#type' => 'markup',
+                '#markup' => '<h4><b>OOPS! Resource <i>' . $node->title. '</i> is not recognized by ElasticSearch</b></h4>',
+            );
+            return $item;
         }
-    }
-    else {
-        drupal_set_message(t('Node is invalid!', 'error'));
     }
 }
 
